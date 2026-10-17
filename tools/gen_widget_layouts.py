@@ -240,19 +240,22 @@ def dot_layout():
                 android:textSize="11sp" />
             <ImageView
                 android:id="@+id/titleimg{i}"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:adjustViewBounds="true"
-                android:scaleType="fitStart" />
+                android:scaleType="center" />
         </LinearLayout>
-        <ImageView
-            android:id="@+id/numimg{i}"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:adjustViewBounds="true"
-            android:scaleType="fitEnd" />
+            android:gravity="end"
+            android:orientation="horizontal">
+            <ImageView
+                android:id="@+id/numimg{i}"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:scaleType="center" />
+        </LinearLayout>
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="3dp"
@@ -275,10 +278,9 @@ def dot_layout():
 
     <ImageView
         android:id="@+id/headerimg"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:adjustViewBounds="true"
-        android:scaleType="fitStart" />
+        android:scaleType="center" />
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1dp"

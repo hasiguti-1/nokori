@@ -25,6 +25,12 @@ object DotRenderer {
     private fun px(ctx: Context, sp: Float) =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, ctx.resources.displayMetrics)
 
+    /** 画面の密度に合わせた空の画像（ホーム画面で拡大縮小されないように） */
+    private fun blank(ctx: Context, w: Int, h: Int): Bitmap =
+        Bitmap.createBitmap(maxOf(1, w), maxOf(1, h), Bitmap.Config.ARGB_8888).apply {
+            density = ctx.resources.displayMetrics.densityDpi
+        }
+
     fun dp(ctx: Context, dp: Float) =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, ctx.resources.displayMetrics)
 
@@ -41,7 +47,7 @@ object DotRenderer {
         val fm = p.fontMetricsInt
         val w = maxOf(1, Math.ceil(p.measureText(shown).toDouble()).toInt())
         val h = fm.descent - fm.ascent
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val bmp = blank(ctx, w, h)
         Canvas(bmp).drawText(shown, 0f, -fm.ascent.toFloat(), p)
         return bmp
     }
@@ -51,7 +57,7 @@ object DotRenderer {
         val p = paint(ctx, 11f, MUTED).apply { letterSpacing = 0.08f }
         val fm = p.fontMetricsInt
         val h = fm.descent - fm.ascent
-        val bmp = Bitmap.createBitmap(maxOf(1, widthPx), h, Bitmap.Config.ARGB_8888)
+        val bmp = blank(ctx, widthPx, h)
         val c = Canvas(bmp)
         c.drawText("残り時間", 0f, -fm.ascent.toFloat(), p)
         c.drawText(time, widthPx - p.measureText(time), -fm.ascent.toFloat(), p)
@@ -64,13 +70,14 @@ object DotRenderer {
         val segs = mutableListOf<Seg>()
         parts.big?.let { segs += Seg(it, paint(ctx, 26f, color), dp(ctx, 3f)) }
         parts.unit?.let { if (parts.big != null) segs += Seg(it, paint(ctx, 12f, MUTED), dp(ctx, 8f)) }
-        parts.clockMs?.let { segs += Seg(hm(it), paint(ctx, 18f, color), 0f) }
+        // 時:分だけのとき（「今日」など）は大きい数字と同じ大きさに
+        parts.clockMs?.let { segs += Seg(hm(it), paint(ctx, if (parts.big == null) 26f else 18f, color), 0f) }
         if (segs.isEmpty()) segs += Seg("-", paint(ctx, 18f, color), 0f)
 
         val ascent = segs.maxOf { -it.paint.fontMetricsInt.ascent }
         val descent = segs.maxOf { it.paint.fontMetricsInt.descent }
         val width = segs.sumOf { (it.paint.measureText(it.s) + it.gapAfter).toDouble() }
-        val bmp = Bitmap.createBitmap(maxOf(1, Math.ceil(width).toInt()), ascent + descent, Bitmap.Config.ARGB_8888)
+        val bmp = blank(ctx, Math.ceil(width).toInt(), ascent + descent)
         val c = Canvas(bmp)
         var x = 0f
         for (seg in segs) {
