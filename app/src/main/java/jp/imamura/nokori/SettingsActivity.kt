@@ -39,8 +39,9 @@ class SettingsActivity : Activity() {
         FontChoice.values().forEachIndexed { i, f ->
             fonts.addView(RadioButton(this).apply {
                 id = 1000 + i
-                text = "${f.label}　33日 08:12:44"
-                typeface = Typeface.create(f.family, Typeface.NORMAL)
+                text = if (f == FontChoice.DOT) "${f.label}　33日 8:12" else "${f.label}　33日 08:12:44"
+                typeface = if (f == FontChoice.DOT) resources.getFont(R.font.dotgothic16)
+                           else Typeface.create(f.family, Typeface.NORMAL)
                 textSize = 18f
                 isChecked = s.font == f
                 setOnClickListener { s.font = f }

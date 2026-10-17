@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
@@ -77,17 +78,46 @@ class CountdownWidget : AppWidgetProvider() {
 
         private fun render(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
             val now = System.currentTimeMillis()
-            val elapsedNow = SystemClock.elapsedRealtime()
             val settings = Settings(ctx)
             val shown = Calc.sorted(Store.load(ctx) + Repeats.build(ctx, now), now)
                 .filter { it.showInWidget && settings.widgetShows(it.kind) }
                 .filter { (it.targetMillis() ?: Long.MIN_VALUE) > now }
                 .take(settings.widgetCount)
 
+            var nextRefresh = Long.MAX_VALUE
+            // ドット文字は幅に合わせて画像を描くので、ウィジェットごとに作る
+            for (wid in ids) {
+                val (views, next) = build(ctx, mgr, wid, settings, shown, now)
+                mgr.updateAppWidget(wid, views)
+                nextRefresh = minOf(nextRefresh, next)
+            }
+            scheduleNext(ctx, nextRefresh)
+        }
+
+        /** 1つのウィジェットの中身を作る。戻り値は（表示内容, 次に描き直す時刻） */
+        private fun build(
+            ctx: Context, mgr: AppWidgetManager, wid: Int,
+            settings: Settings, shown: List<Item>, now: Long,
+        ): Pair<RemoteViews, Long> {
+            val elapsedNow = SystemClock.elapsedRealtime()
+            val dot = settings.font == FontChoice.DOT
             val views = RemoteViews(ctx.packageName, settings.font.layout)
             views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
 
+            // ウィジェットの幅（左右の余白14dp×2を引く）
+            val widthDp = mgr.getAppWidgetOptions(wid)
+                .getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0).takeIf { it > 0 } ?: 300
+            val innerPx = (DotRenderer.dp(ctx, widthDp.toFloat()) - DotRenderer.dp(ctx, 28f)).toInt()
+
             var nextRefresh = Long.MAX_VALUE
+            if (dot) {
+                val t = java.time.LocalTime.now(Calc.zone())
+                views.setImageViewBitmap(R.id.headerimg,
+                    DotRenderer.header(ctx, innerPx, String.format(Locale.JAPAN, "%02d:%02d", t.hour, t.minute)))
+                // 時計の分が変わる瞬間
+                nextRefresh = now + (60_000L - now % 60_000L) + 200
+            }
+
             for (i in 0 until Settings.MAX_ROWS) {
                 val rowId = id(ctx, "row$i")
                 val item = shown.getOrNull(i)
@@ -100,35 +130,47 @@ class CountdownWidget : AppWidgetProvider() {
                 val parts = Calc.parts(item, now)!!
                 views.setViewVisibility(rowId, View.VISIBLE)
 
-                // 種類ラベルと名前
+                // 種類ラベル
                 val chip = id(ctx, "chip$i")
                 views.setTextViewText(chip, item.kind.label)
                 views.setInt(chip, "setBackgroundResource", chipBg(item.kind))
                 views.setTextColor(chip, chipText(item.kind))
-                views.setTextViewText(id(ctx, "title$i"), item.title)
 
-                // 残り（締切は7日を切ったら赤）。表示単位に合わせて数字・単位・時計を出し分け
+                // 残り（締切は7日を切ったら赤）
                 val color = if (item.kind == Kind.DEADLINE && left < 7 * Calc.DAY_MS) URGENT else AMBER
-                val daysId = id(ctx, "days$i")
-                val unitId = id(ctx, "unit$i")
-                val chronoId = id(ctx, "chrono$i")
-                if (parts.big != null) {
-                    views.setViewVisibility(daysId, View.VISIBLE)
-                    views.setViewVisibility(unitId, View.VISIBLE)
-                    views.setTextViewText(daysId, parts.big)
-                    views.setTextViewText(unitId, parts.unit ?: "")
-                    views.setTextColor(daysId, color)
+
+                if (dot) {
+                    // 名前と数字をドット文字の画像で（種類ラベルの幅ぶん名前を短く）
+                    val titleMax = innerPx - DotRenderer.dp(ctx, 72f).toInt()
+                    views.setImageViewBitmap(id(ctx, "titleimg$i"),
+                        DotRenderer.text(ctx, item.title, 16f, DotRenderer.TITLE, maxOf(50, titleMax)))
+                    views.setImageViewBitmap(id(ctx, "numimg$i"), DotRenderer.number(ctx, parts, color))
+                    // 残りの「分」が変わる瞬間
+                    nextRefresh = minOf(nextRefresh, now + left % 60_000L + 200)
                 } else {
-                    views.setViewVisibility(daysId, View.GONE)
-                    views.setViewVisibility(unitId, View.GONE)
-                }
-                if (parts.clockMs != null) {
-                    views.setViewVisibility(chronoId, View.VISIBLE)
-                    views.setChronometer(chronoId, elapsedNow + parts.clockMs, "%s", true)
-                    views.setChronometerCountDown(chronoId, true)
-                    views.setTextColor(chronoId, color)
-                } else {
-                    views.setViewVisibility(chronoId, View.GONE)
+                    views.setTextViewText(id(ctx, "title$i"), item.title)
+                    // 表示単位に合わせて数字・単位・時計を出し分け
+                    val daysId = id(ctx, "days$i")
+                    val unitId = id(ctx, "unit$i")
+                    val chronoId = id(ctx, "chrono$i")
+                    if (parts.big != null) {
+                        views.setViewVisibility(daysId, View.VISIBLE)
+                        views.setViewVisibility(unitId, View.VISIBLE)
+                        views.setTextViewText(daysId, parts.big)
+                        views.setTextViewText(unitId, parts.unit ?: "")
+                        views.setTextColor(daysId, color)
+                    } else {
+                        views.setViewVisibility(daysId, View.GONE)
+                        views.setViewVisibility(unitId, View.GONE)
+                    }
+                    if (parts.clockMs != null) {
+                        views.setViewVisibility(chronoId, View.VISIBLE)
+                        views.setChronometer(chronoId, elapsedNow + parts.clockMs, "%s", true)
+                        views.setChronometerCountDown(chronoId, true)
+                        views.setTextColor(chronoId, color)
+                    } else {
+                        views.setViewVisibility(chronoId, View.GONE)
+                    }
                 }
 
                 // 進み具合バー（その種類の色だけ表示）
@@ -144,9 +186,8 @@ class CountdownWidget : AppWidgetProvider() {
                     }
                 }
 
-                // 次に描き直す時刻：日数が変わる瞬間、時計の切れ目、期日
-                val rem = left % Calc.DAY_MS
-                nextRefresh = minOf(nextRefresh, now + rem + 500)
+                // 次に描き直す時刻：日数が変わる瞬間（＝期日も含む）
+                nextRefresh = minOf(nextRefresh, now + left % Calc.DAY_MS + 500)
                 // 割合表示は時計がないので15分ごとに更新
                 if (item.unit == DisplayUnit.PERCENT) nextRefresh = minOf(nextRefresh, now + 15 * 60_000L)
             }
@@ -156,9 +197,7 @@ class CountdownWidget : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             views.setOnClickPendingIntent(R.id.root, open)
-            mgr.updateAppWidget(ids, views)
-
-            scheduleNext(ctx, nextRefresh)
+            return views to nextRefresh
         }
 
         private fun tickIntent(ctx: Context): PendingIntent = PendingIntent.getBroadcast(
@@ -167,13 +206,17 @@ class CountdownWidget : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        /** 次に描き直す時刻をセット（正確なアラーム権限は不要な方式。最大1分ほど遅れることがある） */
+        /** 次に描き直す時刻をセット */
         private fun scheduleNext(ctx: Context, at: Long) {
             val am = ctx.getSystemService(AlarmManager::class.java) ?: return
             val pi = tickIntent(ctx)
             am.cancel(pi)
             if (at == Long.MAX_VALUE) return
-            am.setWindow(AlarmManager.RTC, at, 60_000L, pi)
+            // 正確なアラームが使えるなら使う（Android 12 以降、時間枠つきは最大10分ほど遅れるため）。
+            // RTC（起こさない）なので、画面が消えている間は鳴らず、点いたときにまとめて更新される
+            val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
+            if (exact) am.setExact(AlarmManager.RTC, at, pi)
+            else am.setWindow(AlarmManager.RTC, at, 60_000L, pi)
         }
     }
 }

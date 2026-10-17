@@ -204,9 +204,106 @@ def layout(font, preview=False):
 '''
 
 
+def dot_layout():
+    """ドット文字（秒なし）用。文字は画像で描くので ImageView を置く。"""
+    rows = []
+    for i in range(ROWS):
+        bars = "\n".join(f'''<ProgressBar
+                android:id="@+id/bar{i}_{k}"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_{k}"
+                android:visibility="gone" />''' for k in KINDS)
+        rows.append(f'''
+    <LinearLayout
+        android:id="@+id/row{i}"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/chip{i}"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:textSize="11sp" />
+            <ImageView
+                android:id="@+id/titleimg{i}"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:adjustViewBounds="true"
+                android:scaleType="fitStart" />
+        </LinearLayout>
+        <ImageView
+            android:id="@+id/numimg{i}"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitEnd" />
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="4dp">
+            {bars}
+        </FrameLayout>
+    </LinearLayout>''')
+    return f'''<?xml version="1.0" encoding="utf-8"?>
+<!-- tools/gen_widget_layouts.py で生成。直接編集しない -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <ImageView
+        android:id="@+id/headerimg"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:scaleType="fitStart" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="5dp"
+        android:scaleType="fitXY"
+        android:src="@drawable/divider" />
+
+    <TextView
+        android:id="@+id/empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="アプリで発売日や締切を登録してください"
+        android:textColor="#8A93A8"
+        android:textSize="13sp"
+        android:visibility="gone" />
+{"".join(rows)}
+</LinearLayout>
+'''
+
+
 if __name__ == "__main__":
     for name, fam in FONTS.items():
         (RES / f"layout/widget_{name}.xml").write_text(layout(fam), encoding="utf-8")
+    (RES / "layout/widget_dot.xml").write_text(dot_layout(), encoding="utf-8")
     (RES / "layout/widget_preview.xml").write_text(layout("monospace", preview=True), encoding="utf-8")
     old = RES / "layout/widget.xml"
     if old.exists():

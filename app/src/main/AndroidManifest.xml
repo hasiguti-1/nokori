@@ -3,6 +3,11 @@
 
     <!-- 再起動後にウィジェットを描き直すため -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- ウィジェットを決まった時刻（日付・分の切れ目）に正確に描き直すため -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
 
     <application
         android:allowBackup="true"

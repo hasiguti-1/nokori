@@ -14,7 +14,9 @@ enum class FontChoice(val label: String, val family: String, val layout: Int) {
     SANS("標準", "sans-serif", R.layout.widget_sans),
     LIGHT("細字", "sans-serif-light", R.layout.widget_light),
     CONDENSED("細長", "sans-serif-condensed", R.layout.widget_condensed),
-    SERIF("明朝風", "serif", R.layout.widget_serif);
+    SERIF("明朝風", "serif", R.layout.widget_serif),
+    /** 文字を画像で描く。秒は出さず1分ごとに更新 */
+    DOT("ドット文字（秒なし）", "", R.layout.widget_dot);
 
     companion object {
         fun from(name: String?) = values().firstOrNull { it.name == name } ?: MONO
