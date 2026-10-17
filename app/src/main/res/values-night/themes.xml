@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="led">#FFB547</color>
+    <color name="urgent">#FF6E60</color>
+    <color name="muted">#8C95AA</color>
+
+    <style name="AppTheme" parent="android:Theme.Material">
+        <item name="android:colorPrimary">#111A2D</item>
+        <item name="android:colorPrimaryDark">#0A0F1D</item>
+        <item name="android:colorAccent">#FFB547</item>
+    </style>
+</resources>

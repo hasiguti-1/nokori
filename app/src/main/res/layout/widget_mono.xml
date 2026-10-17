@@ -1,0 +1,743 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- tools/gen_widget_layouts.py で生成。直接編集しない -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:letterSpacing="0.08"
+            android:text="残り時間"
+            android:textColor="#8A93A8"
+            android:textSize="11sp" />
+        <TextClock
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:format12Hour="HH:mm:ss"
+            android:format24Hour="HH:mm:ss"
+            android:letterSpacing="0.08"
+            android:textColor="#8A93A8"
+            android:textSize="11sp" />
+    </LinearLayout>
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="5dp"
+        android:scaleType="fitXY"
+        android:src="@drawable/divider" />
+
+    <TextView
+        android:id="@+id/empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="アプリで発売日や締切を登録してください"
+        android:textColor="#8A93A8"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/row0"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/chip0"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/title0"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#E7EAF2"
+                android:textSize="16sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end|bottom"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/days0" android:textColor="#FFB23E"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textSize="26sp" />
+            <TextView
+                android:id="@+id/unit0"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="8dp"
+                android:text="日"
+                android:textColor="#8A93A8"
+                android:textSize="12sp" />
+            <Chronometer
+                android:id="@+id/chrono0"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textColor="#FFB23E"
+                android:textSize="18sp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="4dp">
+            <ProgressBar
+                android:id="@+id/bar0_game"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_game"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar0_deadline"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_deadline"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar0_event"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_event"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar0_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar0_life"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_life"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar0_repeat"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_repeat"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/row1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/chip1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/title1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#E7EAF2"
+                android:textSize="16sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end|bottom"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/days1" android:textColor="#FFB23E"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textSize="26sp" />
+            <TextView
+                android:id="@+id/unit1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="8dp"
+                android:text="日"
+                android:textColor="#8A93A8"
+                android:textSize="12sp" />
+            <Chronometer
+                android:id="@+id/chrono1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textColor="#FFB23E"
+                android:textSize="18sp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="4dp">
+            <ProgressBar
+                android:id="@+id/bar1_game"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_game"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar1_deadline"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_deadline"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar1_event"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_event"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar1_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar1_life"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_life"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar1_repeat"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_repeat"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/row2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/chip2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/title2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#E7EAF2"
+                android:textSize="16sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end|bottom"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/days2" android:textColor="#FFB23E"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textSize="26sp" />
+            <TextView
+                android:id="@+id/unit2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="8dp"
+                android:text="日"
+                android:textColor="#8A93A8"
+                android:textSize="12sp" />
+            <Chronometer
+                android:id="@+id/chrono2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textColor="#FFB23E"
+                android:textSize="18sp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="4dp">
+            <ProgressBar
+                android:id="@+id/bar2_game"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_game"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar2_deadline"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_deadline"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar2_event"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_event"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar2_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar2_life"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_life"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar2_repeat"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_repeat"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/row3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/chip3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/title3"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#E7EAF2"
+                android:textSize="16sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end|bottom"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/days3" android:textColor="#FFB23E"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textSize="26sp" />
+            <TextView
+                android:id="@+id/unit3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="8dp"
+                android:text="日"
+                android:textColor="#8A93A8"
+                android:textSize="12sp" />
+            <Chronometer
+                android:id="@+id/chrono3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textColor="#FFB23E"
+                android:textSize="18sp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="4dp">
+            <ProgressBar
+                android:id="@+id/bar3_game"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_game"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar3_deadline"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_deadline"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar3_event"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_event"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar3_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar3_life"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_life"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar3_repeat"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_repeat"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/row4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/chip4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/title4"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#E7EAF2"
+                android:textSize="16sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end|bottom"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/days4" android:textColor="#FFB23E"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textSize="26sp" />
+            <TextView
+                android:id="@+id/unit4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="8dp"
+                android:text="日"
+                android:textColor="#8A93A8"
+                android:textSize="12sp" />
+            <Chronometer
+                android:id="@+id/chrono4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textColor="#FFB23E"
+                android:textSize="18sp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="4dp">
+            <ProgressBar
+                android:id="@+id/bar4_game"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_game"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar4_deadline"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_deadline"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar4_event"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_event"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar4_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar4_life"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_life"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar4_repeat"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_repeat"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/row5"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/chip5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/title5"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#E7EAF2"
+                android:textSize="16sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end|bottom"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/days5" android:textColor="#FFB23E"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textSize="26sp" />
+            <TextView
+                android:id="@+id/unit5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="8dp"
+                android:text="日"
+                android:textColor="#8A93A8"
+                android:textSize="12sp" />
+            <Chronometer
+                android:id="@+id/chrono5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textColor="#FFB23E"
+                android:textSize="18sp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="4dp">
+            <ProgressBar
+                android:id="@+id/bar5_game"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_game"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar5_deadline"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_deadline"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar5_event"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_event"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar5_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar5_life"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_life"
+                android:visibility="gone" />
+<ProgressBar
+                android:id="@+id/bar5_repeat"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_repeat"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+</LinearLayout>

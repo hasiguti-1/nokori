@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">残り時間</string>
+    <string name="widget_name">残り時間（近い順3件）</string>
+    <string name="widget_desc">発売日・締切・寿命などの残りを秒まで表示</string>
+</resources>
