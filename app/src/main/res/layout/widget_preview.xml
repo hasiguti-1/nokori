@@ -83,6 +83,7 @@
                 android:includeFontPadding="false"
                 android:textSize="26sp" />
             <TextView
+                
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
@@ -156,6 +157,7 @@
                 android:includeFontPadding="false"
                 android:textSize="26sp" />
             <TextView
+                
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
@@ -229,6 +231,7 @@
                 android:includeFontPadding="false"
                 android:textSize="26sp" />
             <TextView
+                
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"

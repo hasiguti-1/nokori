@@ -64,7 +64,7 @@ class MainActivity : Activity() {
         list.adapter = adapter
         list.setOnItemClickListener { _, _, pos, _ ->
             val it = adapter.getItem(pos)
-            if (it.kind == Kind.REPEAT) startActivity(android.content.Intent(this, SettingsActivity::class.java))
+            if (it.kind == Kind.REPEAT) chooseRepeatUnit(it)
             else openEditor(it)
         }
         list.setOnItemLongClickListener { _, _, pos, _ ->
@@ -109,6 +109,25 @@ class MainActivity : Activity() {
     private fun persist() {
         Store.save(this, items)
         adapter.notifyDataSetChanged()
+    }
+
+    /** くり返しカウンターの表示単位を選ぶ */
+    private fun chooseRepeatUnit(item: Item) {
+        val units = DisplayUnit.values()
+        val s = Settings(this)
+        AlertDialog.Builder(this)
+            .setTitle("${item.title}：表示単位")
+            .setSingleChoiceItems(units.map { it.label }.toTypedArray(), units.indexOf(s.unitFor(item.id))) { d, which ->
+                s.setUnitFor(item.id, units[which])
+                CountdownWidget.refreshAll(this)
+                adapter.notifyDataSetChanged()
+                d.dismiss()
+            }
+            .setNeutralButton("設定を開く") { _, _ ->
+                startActivity(android.content.Intent(this, SettingsActivity::class.java))
+            }
+            .setNegativeButton("閉じる", null)
+            .show()
     }
 
     private fun confirmDelete(item: Item) {
@@ -221,9 +240,36 @@ class MainActivity : Activity() {
             textSize = 11f
             text = "厚生労働省「令和7年簡易生命表」男性の平均余命を使います（5歳刻みの間は直線補間）"
         }
+        // バーの開始（生まれた日／登録日／日付を選ぶ）
+        val created = orig?.createdAt ?: System.currentTimeMillis()
+        var barMode = when {
+            orig?.start == null -> 0
+            orig?.start == orig?.createdAt -> 1
+            else -> 2
+        }
+        var barDate: LocalDate? = if (barMode == 2) startDate else null
+        val barGroup = android.widget.RadioGroup(this)
+        val barPick = Button(this)
+        fun showBarPick() {
+            barPick.text = barDate?.let { "開始日：$it" } ?: "開始日を選ぶ"
+            barPick.visibility = if (barMode == 2) View.VISIBLE else View.GONE
+        }
+        listOf("生まれた日から", "登録した日から", "日付を選ぶ").forEachIndexed { i, t ->
+            barGroup.addView(android.widget.RadioButton(this).apply {
+                id = 3000 + i; text = t; isChecked = barMode == i
+                setOnClickListener { barMode = i; showBarPick() }
+            })
+        }
+        barPick.setOnClickListener {
+            val d = barDate ?: LocalDate.now()
+            DatePickerDialog(this, { _, y, m, dd -> barDate = LocalDate.of(y, m + 1, dd); showBarPick() },
+                d.year, d.monthValue - 1, d.dayOfMonth).show()
+        }
+        showBarPick()
         val lifeBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(birthBtn); addView(ageLabel); addView(age); addView(calcBtn); addView(calcOut); addView(lifeNote)
+            addView(label("進み具合バーの開始")); addView(barGroup); addView(barPick)
         }
 
         val note = EditText(this).apply {
@@ -254,6 +300,12 @@ class MainActivity : Activity() {
         box.addView(label("名前")); box.addView(name)
         box.addView(label("種類")); box.addView(kind)
         box.addView(dateBox); box.addView(lifeBox)
+        val units = DisplayUnit.values()
+        val unitSpin = Spinner(this).apply {
+            setAdapter(ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, units.map { it.label }))
+            setSelection(units.indexOf(orig?.unit ?: DisplayUnit.AUTO))
+        }
+        box.addView(label("残りの表示単位")); box.addView(unitSpin)
         box.addView(label("メモ")); box.addView(note)
         box.addView(widget)
         syncKind()
@@ -287,8 +339,14 @@ class MainActivity : Activity() {
                     newItem = Item(
                         id = orig?.id ?: java.util.UUID.randomUUID().toString(),
                         title = title, kind = k, birth = b.toString(), lifeAge = a,
+                        start = when (barMode) {
+                            1 -> created
+                            2 -> barDate?.atStartOfDay(Calc.zone())?.toInstant()?.toEpochMilli()
+                            else -> null
+                        },
+                        unit = units[unitSpin.selectedItemPosition],
                         note = note.text.toString().trim(), showInWidget = widget.isChecked,
-                        createdAt = orig?.createdAt ?: System.currentTimeMillis(),
+                        createdAt = created,
                     )
                 } else {
                     val d = date
@@ -299,8 +357,9 @@ class MainActivity : Activity() {
                         id = orig?.id ?: java.util.UUID.randomUUID().toString(),
                         title = title, kind = k, target = Calc.parseDateTime(d.toString(), time),
                         start = startDate?.atStartOfDay(Calc.zone())?.toInstant()?.toEpochMilli(),
+                        unit = units[unitSpin.selectedItemPosition],
                         note = note.text.toString().trim(), showInWidget = widget.isChecked,
-                        createdAt = orig?.createdAt ?: System.currentTimeMillis(),
+                        createdAt = created,
                     )
                 }
                 val i = items.indexOfFirst { it.id == newItem.id }
@@ -346,7 +405,7 @@ class MainActivity : Activity() {
                 leftTv.setTextColor(getColor(R.color.muted))
                 leftTv.textSize = 14f
             } else {
-                leftTv.text = Calc.formatLeft(t, now)
+                leftTv.text = Calc.formatLeft(item, now)
                 leftTv.textSize = 24f
                 leftTv.setTextColor(getColor(when {
                     t < now -> R.color.muted

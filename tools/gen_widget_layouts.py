@@ -7,6 +7,7 @@ from pathlib import Path
 
 RES = Path(__file__).resolve().parent.parent / "app/src/main/res"
 KINDS = ["game", "deadline", "event", "age", "life", "repeat"]
+ROWS = 6  # ウィジェットに出せる最大件数（Settings.MAX_ROWS と合わせる）
 FONTS = {
     "mono": "monospace",
     "sans": "sans-serif",
@@ -46,6 +47,7 @@ def row(i, font, sample=None):
                 android:progress="{pct}"
                 android:progressDrawable="@drawable/{bar}" />'''
         rid = ""
+        unit_id = ""
     else:
         chip_attr = f'android:id="@+id/chip{i}"'
         title_attr = f'android:id="@+id/title{i}"'
@@ -67,6 +69,7 @@ def row(i, font, sample=None):
                 android:progressDrawable="@drawable/bar_{k}"
                 android:visibility="gone" />''' for k in KINDS)
         rid = f'android:id="@+id/row{i}"'
+        unit_id = f'android:id="@+id/unit{i}"'
     return f'''
     <LinearLayout
         {rid}
@@ -112,6 +115,7 @@ def row(i, font, sample=None):
                 android:includeFontPadding="false"
                 android:textSize="26sp" />
             <TextView
+                {unit_id}
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
@@ -146,7 +150,10 @@ def layout(font, preview=False):
             android:letterSpacing="0.08"
             android:textColor="#8A93A8"
             android:textSize="11sp" />''')
-    rows = "".join(row(i, font, SAMPLE[i] if preview else None) for i in range(3))
+    if preview:
+        rows = "".join(row(i, font, SAMPLE[i]) for i in range(len(SAMPLE)))
+    else:
+        rows = "".join(row(i, font) for i in range(ROWS))
     empty = "" if preview else '''
     <TextView
         android:id="@+id/empty"

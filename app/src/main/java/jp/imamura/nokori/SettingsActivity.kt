@@ -111,6 +111,18 @@ class SettingsActivity : Activity() {
         })
         box.addView(week)
 
+        // ── ウィジェットに出す件数 ──
+        box.addView(heading("ウィジェットに出す件数"))
+        box.addView(note("件数を増やしたら、ホーム画面でウィジェットを長押しして縦に広げてください"))
+        val count = RadioGroup(this).apply { orientation = RadioGroup.HORIZONTAL }
+        for (n in 1..Settings.MAX_ROWS) {
+            count.addView(RadioButton(this).apply {
+                id = 2100 + n; text = "$n"; isChecked = s.widgetCount == n
+                setOnClickListener { s.widgetCount = n }
+            })
+        }
+        box.addView(count)
+
         // ── ウィジェットに出す種類 ──
         box.addView(heading("ウィジェットに出す種類"))
         box.addView(note("チェックを外した種類はウィジェットに出ません（アプリの一覧には出ます）"))

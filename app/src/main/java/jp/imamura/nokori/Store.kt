@@ -25,6 +25,23 @@ enum class Kind(val label: String) {
     }
 }
 
+/** 残りの表示単位 */
+enum class DisplayUnit(val label: String) {
+    AUTO("日＋時:分:秒"),
+    HOURS("時間（時:分:秒）"),
+    DAYS("日数だけ"),
+    WEEKS("週＋日"),
+    YEARS("年＋日"),
+    PERCENT("残りの割合（%）");
+
+    companion object {
+        fun from(name: String?) = values().firstOrNull { it.name == name } ?: AUTO
+    }
+}
+
+/** 表示用に分解した残り時間。big が null なら大きい数字は出さない。clockMs が null なら時計は出さない */
+data class LeftParts(val big: String?, val unit: String?, val clockMs: Long?)
+
 /** 1件分のデータ */
 data class Item(
     val id: String = UUID.randomUUID().toString(),
@@ -41,6 +58,8 @@ data class Item(
     val note: String = "",
     val showInWidget: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
+    /** 残りの表示単位 */
+    val unit: DisplayUnit = DisplayUnit.AUTO,
 ) {
     /** 期日を計算（年齢・寿命は 生年月日 ＋ 年齢） */
     fun targetMillis(): Long? {
@@ -57,8 +76,8 @@ data class Item(
         return target
     }
 
-    /** 進み具合バーの起点（年齢・寿命は生年月日、それ以外は開始日か登録日） */
-    fun startMillis(): Long? = if (kind.usesBirth) birthMillis() else (start ?: createdAt)
+    /** 進み具合バーの起点（年齢・寿命は開始日がなければ生年月日、それ以外は開始日か登録日） */
+    fun startMillis(): Long? = if (kind.usesBirth) (start ?: birthMillis()) else (start ?: createdAt)
 
     fun birthMillis(): Long? = try {
         if (birth.isNullOrBlank()) null
@@ -78,6 +97,7 @@ data class Item(
         put("note", note)
         put("showInWidget", showInWidget)
         put("createdAt", createdAt)
+        put("unit", unit.name)
     }
 
     companion object {
@@ -92,6 +112,7 @@ data class Item(
             note = o.optString("note", ""),
             showInWidget = o.optBoolean("showInWidget", true),
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
+            unit = DisplayUnit.from(o.optString("unit", "AUTO")),
         )
     }
 }
@@ -176,6 +197,48 @@ object Calc {
     fun formatDate(ms: Long, withTime: Boolean = true): String {
         val z = Instant.ofEpochMilli(ms).atZone(zone())
         return if (withTime && (z.hour != 0 || z.minute != 0)) z.format(dateTimeFmt) else z.format(dateFmt)
+    }
+
+    /** 残り（ミリ秒）を表示単位に合わせて分解する */
+    fun parts(item: Item, now: Long = System.currentTimeMillis()): LeftParts? {
+        val t = item.targetMillis() ?: return null
+        val left = maxOf(0L, t - now)
+        val days = left / DAY_MS
+        val rem = left % DAY_MS
+        return when (item.unit) {
+            DisplayUnit.AUTO -> LeftParts(String.format(Locale.JAPAN, "%,d", days), "日", rem)
+            DisplayUnit.HOURS -> LeftParts(null, null, left)
+            DisplayUnit.DAYS -> LeftParts(String.format(Locale.JAPAN, "%,d", days), "日", null)
+            DisplayUnit.WEEKS -> LeftParts(String.format(Locale.JAPAN, "%,d週 %d", days / 7, days % 7), "日", null)
+            DisplayUnit.YEARS -> {
+                val y = (left / YEAR_MS).toLong()
+                val d = ((left - y * YEAR_MS) / DAY_MS).toLong()
+                LeftParts(String.format(Locale.JAPAN, "%,d年 %d", y, d), "日", null)
+            }
+            DisplayUnit.PERCENT -> {
+                val s = item.startMillis()
+                if (s == null || t <= s) LeftParts(String.format(Locale.JAPAN, "%,d", days), "日", rem)
+                else LeftParts(String.format(Locale.JAPAN, "%.1f", left * 100.0 / (t - s)), "%", null)
+            }
+        }
+    }
+
+    /** 時間の合計を「792:10:05」の形に */
+    fun hms(ms: Long): String {
+        val h = ms / 3_600_000
+        val m = ms % 3_600_000 / 60_000
+        val s = ms % 60_000 / 1000
+        return String.format(Locale.JAPAN, "%d:%02d:%02d", h, m, s)
+    }
+
+    /** 一覧用：表示単位に合わせた1行（過ぎていれば経過を日＋時:分:秒で） */
+    fun formatLeft(item: Item, now: Long = System.currentTimeMillis()): String {
+        val t = item.targetMillis() ?: return ""
+        if (t < now) return formatLeft(t, now)
+        val p = parts(item, now) ?: return ""
+        val big = p.big?.let { "$it${p.unit}" } ?: ""
+        val clock = p.clockMs?.let { (if (big.isEmpty()) "" else " ") + hms(it) } ?: ""
+        return big + clock
     }
 
     /** 「33日 12:04:55」の形にする（過ぎていれば「経過」） */

@@ -43,18 +43,9 @@ class CountdownWidget : AppWidgetProvider() {
 
     companion object {
         private const val ACTION_TICK = "jp.imamura.nokori.TICK"
-        private val ROWS = intArrayOf(R.id.row0, R.id.row1, R.id.row2)
-        private val CHIPS = intArrayOf(R.id.chip0, R.id.chip1, R.id.chip2)
-        private val TITLES = intArrayOf(R.id.title0, R.id.title1, R.id.title2)
-        private val DAYS = intArrayOf(R.id.days0, R.id.days1, R.id.days2)
-        private val CHRONOS = intArrayOf(R.id.chrono0, R.id.chrono1, R.id.chrono2)
-
-        /** 種類ごとの進み具合バー（行 × 種類） */
-        private val BARS = arrayOf(
-            mapOf(Kind.GAME to R.id.bar0_game, Kind.DEADLINE to R.id.bar0_deadline, Kind.EVENT to R.id.bar0_event, Kind.AGE to R.id.bar0_age, Kind.LIFE to R.id.bar0_life, Kind.REPEAT to R.id.bar0_repeat),
-            mapOf(Kind.GAME to R.id.bar1_game, Kind.DEADLINE to R.id.bar1_deadline, Kind.EVENT to R.id.bar1_event, Kind.AGE to R.id.bar1_age, Kind.LIFE to R.id.bar1_life, Kind.REPEAT to R.id.bar1_repeat),
-            mapOf(Kind.GAME to R.id.bar2_game, Kind.DEADLINE to R.id.bar2_deadline, Kind.EVENT to R.id.bar2_event, Kind.AGE to R.id.bar2_age, Kind.LIFE to R.id.bar2_life, Kind.REPEAT to R.id.bar2_repeat),
-        )
+        /** 行ごとの部品のID（レイアウトは tools/gen_widget_layouts.py で生成） */
+        private fun id(ctx: Context, name: String): Int =
+            ctx.resources.getIdentifier(name, "id", ctx.packageName)
 
         /** 種類ラベルの背景と文字色 */
         private fun chipBg(k: Kind) = when (k) {
@@ -91,41 +82,59 @@ class CountdownWidget : AppWidgetProvider() {
             val shown = Calc.sorted(Store.load(ctx) + Repeats.build(ctx, now), now)
                 .filter { it.showInWidget && settings.widgetShows(it.kind) }
                 .filter { (it.targetMillis() ?: Long.MIN_VALUE) > now }
-                .take(3)
+                .take(settings.widgetCount)
 
             val views = RemoteViews(ctx.packageName, settings.font.layout)
             views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
 
             var nextRefresh = Long.MAX_VALUE
-            for (i in 0 until 3) {
+            for (i in 0 until Settings.MAX_ROWS) {
+                val rowId = id(ctx, "row$i")
                 val item = shown.getOrNull(i)
                 if (item == null) {
-                    views.setViewVisibility(ROWS[i], View.GONE)
+                    views.setViewVisibility(rowId, View.GONE)
                     continue
                 }
-                val left = item.targetMillis()!! - now
-                val days = left / Calc.DAY_MS
-                val rem = left % Calc.DAY_MS
-                views.setViewVisibility(ROWS[i], View.VISIBLE)
+                val target = item.targetMillis()!!
+                val left = target - now
+                val parts = Calc.parts(item, now)!!
+                views.setViewVisibility(rowId, View.VISIBLE)
 
-                // 種類ラベル
-                views.setTextViewText(CHIPS[i], item.kind.label)
-                views.setInt(CHIPS[i], "setBackgroundResource", chipBg(item.kind))
-                views.setTextColor(CHIPS[i], chipText(item.kind))
-                views.setTextViewText(TITLES[i], item.title)
+                // 種類ラベルと名前
+                val chip = id(ctx, "chip$i")
+                views.setTextViewText(chip, item.kind.label)
+                views.setInt(chip, "setBackgroundResource", chipBg(item.kind))
+                views.setTextColor(chip, chipText(item.kind))
+                views.setTextViewText(id(ctx, "title$i"), item.title)
 
-                // 残り（締切は7日を切ったら赤）
+                // 残り（締切は7日を切ったら赤）。表示単位に合わせて数字・単位・時計を出し分け
                 val color = if (item.kind == Kind.DEADLINE && left < 7 * Calc.DAY_MS) URGENT else AMBER
-                views.setTextViewText(DAYS[i], String.format(Locale.JAPAN, "%,d", days))
-                views.setTextColor(DAYS[i], color)
-                views.setChronometer(CHRONOS[i], elapsedNow + rem, "%s", true)
-                views.setChronometerCountDown(CHRONOS[i], true)
-                views.setTextColor(CHRONOS[i], color)
+                val daysId = id(ctx, "days$i")
+                val unitId = id(ctx, "unit$i")
+                val chronoId = id(ctx, "chrono$i")
+                if (parts.big != null) {
+                    views.setViewVisibility(daysId, View.VISIBLE)
+                    views.setViewVisibility(unitId, View.VISIBLE)
+                    views.setTextViewText(daysId, parts.big)
+                    views.setTextViewText(unitId, parts.unit ?: "")
+                    views.setTextColor(daysId, color)
+                } else {
+                    views.setViewVisibility(daysId, View.GONE)
+                    views.setViewVisibility(unitId, View.GONE)
+                }
+                if (parts.clockMs != null) {
+                    views.setViewVisibility(chronoId, View.VISIBLE)
+                    views.setChronometer(chronoId, elapsedNow + parts.clockMs, "%s", true)
+                    views.setChronometerCountDown(chronoId, true)
+                    views.setTextColor(chronoId, color)
+                } else {
+                    views.setViewVisibility(chronoId, View.GONE)
+                }
 
                 // 進み具合バー（その種類の色だけ表示）
                 val start = item.startMillis()
-                val target = item.targetMillis()!!
-                for ((k, barId) in BARS[i]) {
+                for (k in Kind.values()) {
+                    val barId = id(ctx, "bar${i}_${k.name.lowercase()}")
                     if (k == item.kind && start != null && target > start) {
                         val p = (((now - start).toDouble() / (target - start)) * 1000).toInt().coerceIn(0, 1000)
                         views.setViewVisibility(barId, View.VISIBLE)
@@ -134,8 +143,12 @@ class CountdownWidget : AppWidgetProvider() {
                         views.setViewVisibility(barId, View.GONE)
                     }
                 }
-                // この項目の「日」が1つ減る瞬間
+
+                // 次に描き直す時刻：日数が変わる瞬間、時計の切れ目、期日
+                val rem = left % Calc.DAY_MS
                 nextRefresh = minOf(nextRefresh, now + rem + 500)
+                // 割合表示は時計がないので15分ごとに更新
+                if (item.unit == DisplayUnit.PERCENT) nextRefresh = minOf(nextRefresh, now + 15 * 60_000L)
             }
 
             val open = PendingIntent.getActivity(

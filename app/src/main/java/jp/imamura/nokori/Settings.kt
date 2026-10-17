@@ -66,9 +66,23 @@ class Settings(ctx: Context) {
         get() = p.getBoolean("week_monday", true)
         set(v) = p.edit().putBoolean("week_monday", v).apply()
 
+    /** ウィジェットに出す件数（1〜6） */
+    var widgetCount: Int
+        get() = p.getInt("widget_count", 3).coerceIn(1, Settings.MAX_ROWS)
+        set(v) = p.edit().putInt("widget_count", v.coerceIn(1, Settings.MAX_ROWS)).apply()
+
+    /** くり返しカウンターの表示単位（「今日」は日数が常に0なので時間表示を既定に） */
+    fun unitFor(repId: String): DisplayUnit =
+        DisplayUnit.from(p.getString("unit_" + repId, if (repId == "rep_day") "HOURS" else "AUTO"))
+    fun setUnitFor(repId: String, u: DisplayUnit) = p.edit().putString("unit_" + repId, u.name).apply()
+
     /** ウィジェットに出す種類 */
     fun widgetShows(k: Kind): Boolean = p.getBoolean("widget_" + k.name, true)
     fun setWidgetShows(k: Kind, v: Boolean) = p.edit().putBoolean("widget_" + k.name, v).apply()
+
+    companion object {
+        const val MAX_ROWS = 6
+    }
 }
 
 /** くり返しカウンター（保存はせず、毎回その場で計算する） */
@@ -84,20 +98,20 @@ object Repeats {
         val out = mutableListOf<Item>()
 
         if (s.repDay) {
-            out += item("rep_day", "今日が終わるまで", ms(today), ms(today.plusDays(1)))
+            out += item(s, "rep_day", "今日が終わるまで", ms(today), ms(today.plusDays(1)))
         }
         if (s.repWeek) {
             val first = if (s.weekStartsMonday) DayOfWeek.MONDAY else DayOfWeek.SUNDAY
             val start = today.with(TemporalAdjusters.previousOrSame(first))
-            out += item("rep_week", "今週が終わるまで", ms(start), ms(start.plusWeeks(1)))
+            out += item(s, "rep_week", "今週が終わるまで", ms(start), ms(start.plusWeeks(1)))
         }
         if (s.repMonth) {
             val start = today.withDayOfMonth(1)
-            out += item("rep_month", "今月が終わるまで", ms(start), ms(start.plusMonths(1)))
+            out += item(s, "rep_month", "今月が終わるまで", ms(start), ms(start.plusMonths(1)))
         }
         if (s.repYear) {
             val start = today.withDayOfYear(1)
-            out += item("rep_year", "今年が終わるまで", ms(start), ms(start.plusYears(1)))
+            out += item(s, "rep_year", "今年が終わるまで", ms(start), ms(start.plusYears(1)))
         }
         if (s.repWork) {
             val t = runCatching { LocalTime.parse(s.workTime) }.getOrDefault(LocalTime.of(17, 30))
@@ -110,19 +124,20 @@ object Repeats {
             // ひとつ前の定時（バーの起点）
             var pd = d.minusDays(1)
             while (!ok(pd)) pd = pd.minusDays(1)
-            out += item("rep_work", "定時（${s.workTime}）まで", msT(pd.atTime(t)), target)
+            out += item(s, "rep_work", "定時（${s.workTime}）まで", msT(pd.atTime(t)), target)
         }
         if (s.repPayday) {
             fun dayIn(m: LocalDate): LocalDate = m.withDayOfMonth(minOf(s.payday, m.lengthOfMonth()))
             var next = dayIn(today.withDayOfMonth(1))
             if (ms(next) <= now) next = dayIn(today.withDayOfMonth(1).plusMonths(1))
             val prev = dayIn(next.withDayOfMonth(1).minusMonths(1))
-            out += item("rep_payday", "毎月${s.payday}日まで", ms(prev), ms(next))
+            out += item(s, "rep_payday", "毎月${s.payday}日まで", ms(prev), ms(next))
         }
         return out
     }
 
-    private fun item(id: String, title: String, start: Long, target: Long) = Item(
+    private fun item(settings: Settings, id: String, title: String, start: Long, target: Long) = Item(
         id = id, title = title, kind = Kind.REPEAT, target = target, start = start, createdAt = start,
+        unit = settings.unitFor(id),
     )
 }
