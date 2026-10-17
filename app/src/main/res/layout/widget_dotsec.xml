@@ -72,44 +72,6 @@
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
             <ViewFlipper
-                android:id="@+id/sect0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:autoStart="true"
-                android:flipInterval="10000"
-                android:visibility="gone">
-                <ImageView
-                    android:id="@+id/sect0_0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect0_1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect0_2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect0_3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect0_4"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect0_5"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-            </ViewFlipper>
-            <ViewFlipper
                 android:id="@+id/seco0"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -260,44 +222,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
-            <ViewFlipper
-                android:id="@+id/sect1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:autoStart="true"
-                android:flipInterval="10000"
-                android:visibility="gone">
-                <ImageView
-                    android:id="@+id/sect1_0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect1_1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect1_2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect1_3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect1_4"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect1_5"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-            </ViewFlipper>
             <ViewFlipper
                 android:id="@+id/seco1"
                 android:layout_width="wrap_content"
@@ -450,44 +374,6 @@
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
             <ViewFlipper
-                android:id="@+id/sect2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:autoStart="true"
-                android:flipInterval="10000"
-                android:visibility="gone">
-                <ImageView
-                    android:id="@+id/sect2_0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect2_1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect2_2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect2_3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect2_4"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect2_5"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-            </ViewFlipper>
-            <ViewFlipper
                 android:id="@+id/seco2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -638,44 +524,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
-            <ViewFlipper
-                android:id="@+id/sect3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:autoStart="true"
-                android:flipInterval="10000"
-                android:visibility="gone">
-                <ImageView
-                    android:id="@+id/sect3_0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect3_1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect3_2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect3_3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect3_4"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect3_5"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-            </ViewFlipper>
             <ViewFlipper
                 android:id="@+id/seco3"
                 android:layout_width="wrap_content"
@@ -828,44 +676,6 @@
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
             <ViewFlipper
-                android:id="@+id/sect4"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:autoStart="true"
-                android:flipInterval="10000"
-                android:visibility="gone">
-                <ImageView
-                    android:id="@+id/sect4_0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect4_1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect4_2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect4_3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect4_4"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect4_5"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-            </ViewFlipper>
-            <ViewFlipper
                 android:id="@+id/seco4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -1016,44 +826,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
-            <ViewFlipper
-                android:id="@+id/sect5"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:autoStart="true"
-                android:flipInterval="10000"
-                android:visibility="gone">
-                <ImageView
-                    android:id="@+id/sect5_0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect5_1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect5_2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect5_3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect5_4"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-                <ImageView
-                    android:id="@+id/sect5_5"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />
-            </ViewFlipper>
             <ViewFlipper
                 android:id="@+id/seco5"
                 android:layout_width="wrap_content"

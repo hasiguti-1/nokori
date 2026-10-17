@@ -85,9 +85,11 @@ class CountdownWidget : AppWidgetProvider() {
                 .take(settings.widgetCount)
 
             var nextRefresh = Long.MAX_VALUE
+            // 秒ありは描き直すたびにレイアウトを交互に替える（全ウィジェット共通で1回だけ切り替え）
+            val secLayout = if (settings.font == FontChoice.DOT_SEC) nextSecLayout(ctx) else 0
             // ドット文字は幅に合わせて画像を描くので、ウィジェットごとに作る
             for (wid in ids) {
-                val (views, next) = build(ctx, mgr, wid, settings, shown, now)
+                val (views, next) = build(ctx, mgr, wid, settings, shown, now, secLayout)
                 mgr.updateAppWidget(wid, views)
                 nextRefresh = minOf(nextRefresh, next)
             }
@@ -97,12 +99,14 @@ class CountdownWidget : AppWidgetProvider() {
         /** 1つのウィジェットの中身を作る。戻り値は（表示内容, 次に描き直す時刻） */
         private fun build(
             ctx: Context, mgr: AppWidgetManager, wid: Int,
-            settings: Settings, shown: List<Item>, now: Long,
+            settings: Settings, shown: List<Item>, now: Long, secLayout: Int,
         ): Pair<RemoteViews, Long> {
             val elapsedNow = SystemClock.elapsedRealtime()
             val dot = settings.font.isImage
             val secs = settings.font == FontChoice.DOT_SEC
-            val views = RemoteViews(ctx.packageName, settings.font.layout)
+            // 秒ありは2つのレイアウトを交互に使い、1秒ごとの切り替えのタイマーを毎回リセットする
+            val layout = if (secs) secLayout else settings.font.layout
+            val views = RemoteViews(ctx.packageName, layout)
             views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
 
             // ウィジェットの幅（縦向き画面での幅＝MIN_WIDTH。左右の余白14dp×2を引く）
@@ -145,27 +149,21 @@ class CountdownWidget : AppWidgetProvider() {
                     val titleMax = innerPx - DotRenderer.dp(ctx, 72f).toInt()
                     views.setImageViewBitmap(id(ctx, "titleimg$i"),
                         DotRenderer.text(ctx, item.title, 16f, DotRenderer.TITLE, maxOf(50, titleMax)))
-                    val num = DotRenderer.number(ctx, parts, color, withSecColon = secs && parts.clockMs != null)
+                    val clock = parts.clockMs
+                    val sec = clock?.let { ((it % 60_000L) / 1000L).toInt() }
+                    val num = DotRenderer.number(ctx, parts, color, secTens = if (secs) sec?.div(10) else null)
                     views.setImageViewBitmap(id(ctx, "numimg$i"), num.bitmap)
                     if (secs) {
-                        val tId = id(ctx, "sect$i")
                         val oId = id(ctx, "seco$i")
-                        val clock = parts.clockMs
-                        if (clock != null) {
-                            // 秒の2桁。切り替え部品の中身を「5,4,…,0」「9,8,…,0」の順に入れ、今の値から始める
-                            val sec = ((clock % 60_000L) / 1000L).toInt()
-                            for (n in 0..5) views.setImageViewBitmap(id(ctx, "sect${i}_$n"),
-                                DotRenderer.digit(ctx, 5 - n, num.clockSp, color, num.ascent, num.descent))
+                        if (sec != null) {
+                            // 秒の1の位。切り替え部品に「9,8,…,0」の順で入れ、今の値から始める
                             for (n in 0..9) views.setImageViewBitmap(id(ctx, "seco${i}_$n"),
                                 DotRenderer.digit(ctx, 9 - n, num.clockSp, color, num.ascent, num.descent))
-                            views.setDisplayedChild(tId, 5 - sec / 10)
                             views.setDisplayedChild(oId, 9 - sec % 10)
-                            views.setViewVisibility(tId, View.VISIBLE)
                             views.setViewVisibility(oId, View.VISIBLE)
-                            // 10秒の桁が変わる瞬間に合わせ直す（止まっていた分のずれもここで戻る）
+                            // 10の位が変わる瞬間に描き直す（止まっていた分のずれもここで戻る）
                             nextRefresh = minOf(nextRefresh, now + left % 10_000L + 150)
                         } else {
-                            views.setViewVisibility(tId, View.GONE)
                             views.setViewVisibility(oId, View.GONE)
                         }
                     }
@@ -222,6 +220,14 @@ class CountdownWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.root, open)
             return views to nextRefresh
+        }
+
+        /** 秒あり用のレイアウトを交互に返す */
+        private fun nextSecLayout(ctx: Context): Int {
+            val p = ctx.getSharedPreferences("widget_state", Context.MODE_PRIVATE)
+            val flip = !p.getBoolean("sec_layout_flip", false)
+            p.edit().putBoolean("sec_layout_flip", flip).apply()
+            return if (flip) R.layout.widget_dotsec2 else R.layout.widget_dotsec
         }
 
         private fun tickIntent(ctx: Context): PendingIntent = PendingIntent.getBroadcast(

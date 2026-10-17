@@ -69,16 +69,16 @@ object DotRenderer {
 
     /**
      * 残りの数字。大きい数字＋単位（小さく灰色）＋時:分 を下揃えで並べる。
-     * withSecColon が true なら末尾に「:」を付ける（後ろに秒の2桁が並ぶ）
+     * secTens があれば末尾に「:」と秒の10の位を付ける（後ろに秒の1の位が並ぶ）
      */
-    fun number(ctx: Context, parts: LeftParts, color: Int, withSecColon: Boolean = false): Number {
+    fun number(ctx: Context, parts: LeftParts, color: Int, secTens: Int? = null): Number {
         data class Seg(val s: String, val paint: TextPaint, val gapAfter: Float)
         val segs = mutableListOf<Seg>()
         // 時:分だけのとき（「今日」など）は大きい数字と同じ大きさに
         val clockSp = if (parts.big == null) 26f else 18f
         parts.big?.let { segs += Seg(it, paint(ctx, 26f, color), dp(ctx, 3f)) }
         parts.unit?.let { if (parts.big != null) segs += Seg(it, paint(ctx, 12f, MUTED), dp(ctx, 8f)) }
-        parts.clockMs?.let { segs += Seg(hm(it) + if (withSecColon) ":" else "", paint(ctx, clockSp, color), 0f) }
+        parts.clockMs?.let { segs += Seg(hm(it) + (secTens?.let { t -> ":$t" } ?: ""), paint(ctx, clockSp, color), 0f) }
         if (segs.isEmpty()) segs += Seg("-", paint(ctx, 18f, color), 0f)
 
         val ascent = segs.maxOf { -it.paint.fontMetricsInt.ascent }

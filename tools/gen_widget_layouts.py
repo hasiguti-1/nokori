@@ -226,7 +226,8 @@ def dot_layout(secs=False):
     """ドット文字用。文字は画像で描くので ImageView を置く。secs=True なら秒の2桁を切り替え部品で動かす。"""
     rows = []
     for i in range(ROWS):
-        sec_parts = (flipper(f"sect{i}", 6, 10000) + "\n            " + flipper(f"seco{i}", 10, 1000)) if secs else ""
+        # 10の位は数字画像に含めて描き直す。1の位だけ1秒ごとに切り替える
+        sec_parts = flipper(f"seco{i}", 10, 1000) if secs else ""
         bars = "\n".join(f'''<ProgressBar
                 android:id="@+id/bar{i}_{k}"
                 style="?android:attr/progressBarStyleHorizontal"
@@ -326,7 +327,10 @@ if __name__ == "__main__":
     for name, fam in FONTS.items():
         (RES / f"layout/widget_{name}.xml").write_text(layout(fam), encoding="utf-8")
     (RES / "layout/widget_dot.xml").write_text(dot_layout(), encoding="utf-8")
+    # 秒あり用は同じ中身を2つ作り、描き直すたびに交互に使う
+    # （同じレイアウトだとホーム画面が部品を使い回し、切り替えのタイマーがリセットされないため）
     (RES / "layout/widget_dotsec.xml").write_text(dot_layout(secs=True), encoding="utf-8")
+    (RES / "layout/widget_dotsec2.xml").write_text(dot_layout(secs=True), encoding="utf-8")
     (RES / "layout/widget_preview.xml").write_text(layout("monospace", preview=True), encoding="utf-8")
     old = RES / "layout/widget.xml"
     if old.exists():
