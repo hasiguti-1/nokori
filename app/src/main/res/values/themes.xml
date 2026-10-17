@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="led">#B35F00</color>
+    <color name="urgent">#C2352B</color>
+    <color name="muted">#5D6679</color>
+    <color name="widget_bg">#E6111A2D</color>
+    <color name="widget_led">#FFB547</color>
+    <color name="widget_text">#E6E9F1</color>
+    <color name="widget_muted">#8C95AA</color>
+    <color name="icon_bg">#111A2D</color>
+    <color name="icon_fg">#FFB547</color>
+
+    <style name="AppTheme" parent="android:Theme.Material.Light.DarkActionBar">
+        <item name="android:colorPrimary">#16213B</item>
+        <item name="android:colorPrimaryDark">#0A0F1D</item>
+        <item name="android:colorAccent">#B35F00</item>
+    </style>
+</resources>
