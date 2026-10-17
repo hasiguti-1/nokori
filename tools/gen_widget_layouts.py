@@ -204,10 +204,29 @@ def layout(font, preview=False):
 '''
 
 
-def dot_layout():
-    """ドット文字（秒なし）用。文字は画像で描くので ImageView を置く。"""
+def flipper(fid, count, interval):
+    """数字画像を一定間隔で切り替える部品（秒の桁用）。中の画像はアプリが描いて入れる。"""
+    kids = "\n".join(f'''                <ImageView
+                    android:id="@+id/{fid}_{n}"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:scaleType="center" />''' for n in range(count))
+    return f'''<ViewFlipper
+                android:id="@+id/{fid}"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:autoStart="true"
+                android:flipInterval="{interval}"
+                android:visibility="gone">
+{kids}
+            </ViewFlipper>'''
+
+
+def dot_layout(secs=False):
+    """ドット文字用。文字は画像で描くので ImageView を置く。secs=True なら秒の2桁を切り替え部品で動かす。"""
     rows = []
     for i in range(ROWS):
+        sec_parts = (flipper(f"sect{i}", 6, 10000) + "\n            " + flipper(f"seco{i}", 10, 1000)) if secs else ""
         bars = "\n".join(f'''<ProgressBar
                 android:id="@+id/bar{i}_{k}"
                 style="?android:attr/progressBarStyleHorizontal"
@@ -255,6 +274,7 @@ def dot_layout():
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
+            {sec_parts}
         </LinearLayout>
         <FrameLayout
             android:layout_width="match_parent"
@@ -306,6 +326,7 @@ if __name__ == "__main__":
     for name, fam in FONTS.items():
         (RES / f"layout/widget_{name}.xml").write_text(layout(fam), encoding="utf-8")
     (RES / "layout/widget_dot.xml").write_text(dot_layout(), encoding="utf-8")
+    (RES / "layout/widget_dotsec.xml").write_text(dot_layout(secs=True), encoding="utf-8")
     (RES / "layout/widget_preview.xml").write_text(layout("monospace", preview=True), encoding="utf-8")
     old = RES / "layout/widget.xml"
     if old.exists():

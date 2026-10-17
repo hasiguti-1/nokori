@@ -100,13 +100,14 @@ class CountdownWidget : AppWidgetProvider() {
             settings: Settings, shown: List<Item>, now: Long,
         ): Pair<RemoteViews, Long> {
             val elapsedNow = SystemClock.elapsedRealtime()
-            val dot = settings.font == FontChoice.DOT
+            val dot = settings.font.isImage
+            val secs = settings.font == FontChoice.DOT_SEC
             val views = RemoteViews(ctx.packageName, settings.font.layout)
             views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
 
-            // ウィジェットの幅（左右の余白14dp×2を引く）
+            // ウィジェットの幅（縦向き画面での幅＝MIN_WIDTH。左右の余白14dp×2を引く）
             val widthDp = mgr.getAppWidgetOptions(wid)
-                .getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0).takeIf { it > 0 } ?: 300
+                .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0).takeIf { it > 0 } ?: 300
             val innerPx = (DotRenderer.dp(ctx, widthDp.toFloat()) - DotRenderer.dp(ctx, 28f)).toInt()
 
             var nextRefresh = Long.MAX_VALUE
@@ -144,7 +145,30 @@ class CountdownWidget : AppWidgetProvider() {
                     val titleMax = innerPx - DotRenderer.dp(ctx, 72f).toInt()
                     views.setImageViewBitmap(id(ctx, "titleimg$i"),
                         DotRenderer.text(ctx, item.title, 16f, DotRenderer.TITLE, maxOf(50, titleMax)))
-                    views.setImageViewBitmap(id(ctx, "numimg$i"), DotRenderer.number(ctx, parts, color))
+                    val num = DotRenderer.number(ctx, parts, color, withSecColon = secs && parts.clockMs != null)
+                    views.setImageViewBitmap(id(ctx, "numimg$i"), num.bitmap)
+                    if (secs) {
+                        val tId = id(ctx, "sect$i")
+                        val oId = id(ctx, "seco$i")
+                        val clock = parts.clockMs
+                        if (clock != null) {
+                            // 秒の2桁。切り替え部品の中身を「5,4,…,0」「9,8,…,0」の順に入れ、今の値から始める
+                            val sec = ((clock % 60_000L) / 1000L).toInt()
+                            for (n in 0..5) views.setImageViewBitmap(id(ctx, "sect${i}_$n"),
+                                DotRenderer.digit(ctx, 5 - n, num.clockSp, color, num.ascent, num.descent))
+                            for (n in 0..9) views.setImageViewBitmap(id(ctx, "seco${i}_$n"),
+                                DotRenderer.digit(ctx, 9 - n, num.clockSp, color, num.ascent, num.descent))
+                            views.setDisplayedChild(tId, 5 - sec / 10)
+                            views.setDisplayedChild(oId, 9 - sec % 10)
+                            views.setViewVisibility(tId, View.VISIBLE)
+                            views.setViewVisibility(oId, View.VISIBLE)
+                            // 10秒の桁が変わる瞬間に合わせ直す（止まっていた分のずれもここで戻る）
+                            nextRefresh = minOf(nextRefresh, now + left % 10_000L + 150)
+                        } else {
+                            views.setViewVisibility(tId, View.GONE)
+                            views.setViewVisibility(oId, View.GONE)
+                        }
+                    }
                     // 残りの「分」が変わる瞬間
                     nextRefresh = minOf(nextRefresh, now + left % 60_000L + 200)
                 } else {

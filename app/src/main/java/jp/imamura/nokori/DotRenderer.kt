@@ -64,14 +64,21 @@ object DotRenderer {
         return bmp
     }
 
-    /** 残りの数字。大きい数字＋単位（小さく灰色）＋時:分 を下揃えで並べる */
-    fun number(ctx: Context, parts: LeftParts, color: Int): Bitmap {
+    /** 数字画像と、秒の桁画像をそろえるための情報 */
+    data class Number(val bitmap: Bitmap, val clockSp: Float, val ascent: Int, val descent: Int)
+
+    /**
+     * 残りの数字。大きい数字＋単位（小さく灰色）＋時:分 を下揃えで並べる。
+     * withSecColon が true なら末尾に「:」を付ける（後ろに秒の2桁が並ぶ）
+     */
+    fun number(ctx: Context, parts: LeftParts, color: Int, withSecColon: Boolean = false): Number {
         data class Seg(val s: String, val paint: TextPaint, val gapAfter: Float)
         val segs = mutableListOf<Seg>()
+        // 時:分だけのとき（「今日」など）は大きい数字と同じ大きさに
+        val clockSp = if (parts.big == null) 26f else 18f
         parts.big?.let { segs += Seg(it, paint(ctx, 26f, color), dp(ctx, 3f)) }
         parts.unit?.let { if (parts.big != null) segs += Seg(it, paint(ctx, 12f, MUTED), dp(ctx, 8f)) }
-        // 時:分だけのとき（「今日」など）は大きい数字と同じ大きさに
-        parts.clockMs?.let { segs += Seg(hm(it), paint(ctx, if (parts.big == null) 26f else 18f, color), 0f) }
+        parts.clockMs?.let { segs += Seg(hm(it) + if (withSecColon) ":" else "", paint(ctx, clockSp, color), 0f) }
         if (segs.isEmpty()) segs += Seg("-", paint(ctx, 18f, color), 0f)
 
         val ascent = segs.maxOf { -it.paint.fontMetricsInt.ascent }
@@ -84,6 +91,17 @@ object DotRenderer {
             c.drawText(seg.s, x, ascent.toFloat(), seg.paint)
             x += seg.paint.measureText(seg.s) + seg.gapAfter
         }
+        return Number(bmp, clockSp, ascent, descent)
+    }
+
+    /** 秒の1桁。数字画像と同じ高さ・同じ下揃えで描く（横に並べたときにずれないように） */
+    fun digit(ctx: Context, d: Int, sp: Float, color: Int, ascent: Int, descent: Int): Bitmap {
+        val p = paint(ctx, sp, color)
+        val s = d.toString()
+        // 数字ごとに幅が違うと揺れるので、一番広い数字の幅にそろえる
+        val w = Math.ceil((0..9).maxOf { p.measureText(it.toString()) }.toDouble()).toInt()
+        val bmp = blank(ctx, w, ascent + descent)
+        Canvas(bmp).drawText(s, (w - p.measureText(s)) / 2f, ascent.toFloat(), p)
         return bmp
     }
 
