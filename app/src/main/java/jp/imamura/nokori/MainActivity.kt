@@ -347,7 +347,7 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(12), dp(16), dp(12))
             addView(TextView(context).apply { textSize = 11f; setTextColor(getColor(R.color.muted)) })
             addView(TextView(context).apply { textSize = 16f; setTypeface(typeface, Typeface.BOLD) })
-            addView(TextView(context).apply { typeface = Typeface.MONOSPACE })
+            addView(TextView(context).apply { typeface = resources.getFont(R.font.dotgothic16) })
             addView(TextView(context).apply { textSize = 12f; setTextColor(getColor(R.color.muted)) })
             addView(ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
                 max = 1000

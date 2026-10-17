@@ -18,3 +18,7 @@
 
 `main` に push すると GitHub Actions がビルドし、Releases に `nokori.apk` を置く。
 署名鍵 `app/nokori.jks` は自分用。人に配る・販売する場合は別の鍵を作り、パスワードを Secrets に移すこと。
+
+## フォント
+
+数字の表示に DotGothic16（SIL Open Font License 1.1）を同梱。ライセンス全文は `licenses/DotGothic16-OFL.txt`。
