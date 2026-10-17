@@ -12,12 +12,15 @@ import java.util.UUID
 
 /** 種類 */
 enum class Kind(val label: String) {
-    GAME("ゲーム"), DEADLINE("締切"), EVENT("イベント"), AGE("年齢"), LIFE("寿命");
+    GAME("ゲーム"), DEADLINE("締切"), EVENT("イベント"), AGE("年齢"), LIFE("寿命"), REPEAT("くり返し");
 
     /** 生年月日から数える種類か */
     val usesBirth: Boolean get() = this == AGE || this == LIFE
 
     companion object {
+        /** 自分で登録できる種類（くり返しは設定画面で選ぶ） */
+        val editable: List<Kind> get() = values().filter { it != REPEAT }
+
         fun from(name: String?): Kind = values().firstOrNull { it.name == name } ?: EVENT
     }
 }

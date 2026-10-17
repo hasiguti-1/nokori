@@ -51,9 +51,9 @@ class CountdownWidget : AppWidgetProvider() {
 
         /** 種類ごとの進み具合バー（行 × 種類） */
         private val BARS = arrayOf(
-            mapOf(Kind.GAME to R.id.bar0_game, Kind.DEADLINE to R.id.bar0_deadline, Kind.EVENT to R.id.bar0_event, Kind.AGE to R.id.bar0_age, Kind.LIFE to R.id.bar0_life),
-            mapOf(Kind.GAME to R.id.bar1_game, Kind.DEADLINE to R.id.bar1_deadline, Kind.EVENT to R.id.bar1_event, Kind.AGE to R.id.bar1_age, Kind.LIFE to R.id.bar1_life),
-            mapOf(Kind.GAME to R.id.bar2_game, Kind.DEADLINE to R.id.bar2_deadline, Kind.EVENT to R.id.bar2_event, Kind.AGE to R.id.bar2_age, Kind.LIFE to R.id.bar2_life),
+            mapOf(Kind.GAME to R.id.bar0_game, Kind.DEADLINE to R.id.bar0_deadline, Kind.EVENT to R.id.bar0_event, Kind.AGE to R.id.bar0_age, Kind.LIFE to R.id.bar0_life, Kind.REPEAT to R.id.bar0_repeat),
+            mapOf(Kind.GAME to R.id.bar1_game, Kind.DEADLINE to R.id.bar1_deadline, Kind.EVENT to R.id.bar1_event, Kind.AGE to R.id.bar1_age, Kind.LIFE to R.id.bar1_life, Kind.REPEAT to R.id.bar1_repeat),
+            mapOf(Kind.GAME to R.id.bar2_game, Kind.DEADLINE to R.id.bar2_deadline, Kind.EVENT to R.id.bar2_event, Kind.AGE to R.id.bar2_age, Kind.LIFE to R.id.bar2_life, Kind.REPEAT to R.id.bar2_repeat),
         )
 
         /** 種類ラベルの背景と文字色 */
@@ -62,6 +62,7 @@ class CountdownWidget : AppWidgetProvider() {
             Kind.DEADLINE -> R.drawable.chip_deadline
             Kind.EVENT -> R.drawable.chip_event
             Kind.AGE -> R.drawable.chip_age
+            Kind.REPEAT -> R.drawable.chip_repeat
             Kind.LIFE -> R.drawable.chip_life
         }
 
@@ -70,6 +71,7 @@ class CountdownWidget : AppWidgetProvider() {
             Kind.DEADLINE -> 0xFFF5C4B3.toInt()
             Kind.EVENT -> 0xFFB5D4F4.toInt()
             Kind.AGE -> 0xFFF4C0D1.toInt()
+            Kind.REPEAT -> 0xFFD3D1C7.toInt()
             Kind.LIFE -> 0xFFCECBF6.toInt()
         }
 
@@ -85,12 +87,13 @@ class CountdownWidget : AppWidgetProvider() {
         private fun render(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
             val now = System.currentTimeMillis()
             val elapsedNow = SystemClock.elapsedRealtime()
-            val shown = Calc.sorted(Store.load(ctx), now)
-                .filter { it.showInWidget }
+            val settings = Settings(ctx)
+            val shown = Calc.sorted(Store.load(ctx) + Repeats.build(ctx, now), now)
+                .filter { it.showInWidget && settings.widgetShows(it.kind) }
                 .filter { (it.targetMillis() ?: Long.MIN_VALUE) > now }
                 .take(3)
 
-            val views = RemoteViews(ctx.packageName, R.layout.widget)
+            val views = RemoteViews(ctx.packageName, settings.font.layout)
             views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
 
             var nextRefresh = Long.MAX_VALUE

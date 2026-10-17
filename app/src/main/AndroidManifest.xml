@@ -19,6 +19,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="設定" />
+
         <receiver
             android:name=".CountdownWidget"
             android:exported="true"

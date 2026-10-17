@@ -62,9 +62,17 @@ class MainActivity : Activity() {
 
         adapter = ItemAdapter()
         list.adapter = adapter
-        list.setOnItemClickListener { _, _, pos, _ -> openEditor(adapter.getItem(pos)) }
+        list.setOnItemClickListener { _, _, pos, _ ->
+            val it = adapter.getItem(pos)
+            if (it.kind == Kind.REPEAT) startActivity(android.content.Intent(this, SettingsActivity::class.java))
+            else openEditor(it)
+        }
         list.setOnItemLongClickListener { _, _, pos, _ ->
-            confirmDelete(adapter.getItem(pos)); true
+            val it = adapter.getItem(pos)
+            if (it.kind == Kind.REPEAT) {
+                android.widget.Toast.makeText(this, "くり返しは設定画面でオフにできます", android.widget.Toast.LENGTH_SHORT).show()
+            } else confirmDelete(it)
+            true
         }
         // 初回の初期データを保存しておく
         Store.save(this, items)
@@ -82,12 +90,16 @@ class MainActivity : Activity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, 1, 0, "＋ 追加").setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(0, 2, 1, "設定").setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == 1) {
             openEditor(null); return true
+        }
+        if (item.itemId == 2) {
+            startActivity(android.content.Intent(this, SettingsActivity::class.java)); return true
         }
         return super.onOptionsItemSelected(item)
     }
@@ -132,7 +144,7 @@ class MainActivity : Activity() {
             setText(orig?.title ?: ""); hint = "例：〇〇 発売日"
             inputType = InputType.TYPE_CLASS_TEXT
         }
-        val kinds = Kind.values()
+        val kinds = Kind.editable
         val kind = Spinner(this).apply {
             setAdapter(ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, kinds.map { it.label }))
             setSelection(kinds.indexOf(orig?.kind ?: Kind.GAME))
@@ -305,11 +317,11 @@ class MainActivity : Activity() {
         private var view: List<Item> = emptyList()
 
         override fun notifyDataSetChanged() {
-            view = Calc.sorted(items)
+            view = Calc.sorted(items + Repeats.build(this@MainActivity))
             super.notifyDataSetChanged()
         }
 
-        init { view = Calc.sorted(items) }
+        init { view = Calc.sorted(items + Repeats.build(this@MainActivity)) }
 
         override fun getCount() = view.size
         override fun getItem(position: Int): Item = view[position]
