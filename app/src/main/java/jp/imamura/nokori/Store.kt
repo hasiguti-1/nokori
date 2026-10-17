@@ -12,7 +12,10 @@ import java.util.UUID
 
 /** 種類 */
 enum class Kind(val label: String) {
-    GAME("ゲーム"), DEADLINE("締切"), EVENT("イベント"), LIFE("寿命");
+    GAME("ゲーム"), DEADLINE("締切"), EVENT("イベント"), AGE("年齢"), LIFE("寿命");
+
+    /** 生年月日から数える種類か */
+    val usesBirth: Boolean get() = this == AGE || this == LIFE
 
     companion object {
         fun from(name: String?): Kind = values().firstOrNull { it.name == name } ?: EVENT
@@ -28,21 +31,31 @@ data class Item(
     val target: Long? = null,
     /** 生年月日 yyyy-MM-dd（寿命のときだけ） */
     val birth: String? = null,
-    /** 想定寿命（歳）（寿命のときだけ） */
+    /** 目標の年齢・想定寿命（歳）（年齢・寿命のときだけ） */
     val lifeAge: Double? = null,
+    /** 進み具合バーの開始日（エポックミリ秒）。未設定なら登録日 */
+    val start: Long? = null,
     val note: String = "",
     val showInWidget: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
 ) {
-    /** 期日を計算（寿命は 生年月日 ＋ 想定寿命） */
+    /** 期日を計算（年齢・寿命は 生年月日 ＋ 年齢） */
     fun targetMillis(): Long? {
-        if (kind == Kind.LIFE) {
+        if (kind.usesBirth) {
             val b = birthMillis() ?: return null
             val age = lifeAge ?: return null
+            // 整数の年齢なら誕生日ちょうど、小数なら年数で換算
+            if (age == Math.floor(age)) {
+                return LocalDate.parse(birth!!).plusYears(age.toLong())
+                    .atStartOfDay(Calc.zone()).toInstant().toEpochMilli()
+            }
             return b + (age * Calc.YEAR_MS).toLong()
         }
         return target
     }
+
+    /** 進み具合バーの起点（年齢・寿命は生年月日、それ以外は開始日か登録日） */
+    fun startMillis(): Long? = if (kind.usesBirth) birthMillis() else (start ?: createdAt)
 
     fun birthMillis(): Long? = try {
         if (birth.isNullOrBlank()) null
@@ -58,6 +71,7 @@ data class Item(
         put("target", target ?: JSONObject.NULL)
         put("birth", birth ?: JSONObject.NULL)
         put("lifeAge", lifeAge ?: JSONObject.NULL)
+        put("start", start ?: JSONObject.NULL)
         put("note", note)
         put("showInWidget", showInWidget)
         put("createdAt", createdAt)
@@ -71,6 +85,7 @@ data class Item(
             target = if (o.isNull("target")) null else o.optLong("target"),
             birth = if (o.isNull("birth")) null else o.optString("birth"),
             lifeAge = if (o.isNull("lifeAge")) null else o.optDouble("lifeAge"),
+            start = if (!o.has("start") || o.isNull("start")) null else o.optLong("start"),
             note = o.optString("note", ""),
             showInWidget = o.optBoolean("showInWidget", true),
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
@@ -138,6 +153,12 @@ object Calc {
             if (age >= a0 && age <= a1) return r0 + (r1 - r0) * (age - a0) / (a1 - a0)
         }
         return LIFE_M.last().second
+    }
+
+    /** 40.0 → "40"、81.25 → "81.25" */
+    fun fmtAge(a: Double?): String {
+        if (a == null) return ""
+        return if (a == Math.floor(a)) a.toLong().toString() else String.format(Locale.JAPAN, "%.2f", a)
     }
 
     fun ageNow(birthMillis: Long, now: Long = System.currentTimeMillis()): Double =

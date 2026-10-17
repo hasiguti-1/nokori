@@ -51,9 +51,9 @@ class CountdownWidget : AppWidgetProvider() {
 
         /** 種類ごとの進み具合バー（行 × 種類） */
         private val BARS = arrayOf(
-            mapOf(Kind.GAME to R.id.bar0_game, Kind.DEADLINE to R.id.bar0_deadline, Kind.EVENT to R.id.bar0_event, Kind.LIFE to R.id.bar0_life),
-            mapOf(Kind.GAME to R.id.bar1_game, Kind.DEADLINE to R.id.bar1_deadline, Kind.EVENT to R.id.bar1_event, Kind.LIFE to R.id.bar1_life),
-            mapOf(Kind.GAME to R.id.bar2_game, Kind.DEADLINE to R.id.bar2_deadline, Kind.EVENT to R.id.bar2_event, Kind.LIFE to R.id.bar2_life),
+            mapOf(Kind.GAME to R.id.bar0_game, Kind.DEADLINE to R.id.bar0_deadline, Kind.EVENT to R.id.bar0_event, Kind.AGE to R.id.bar0_age, Kind.LIFE to R.id.bar0_life),
+            mapOf(Kind.GAME to R.id.bar1_game, Kind.DEADLINE to R.id.bar1_deadline, Kind.EVENT to R.id.bar1_event, Kind.AGE to R.id.bar1_age, Kind.LIFE to R.id.bar1_life),
+            mapOf(Kind.GAME to R.id.bar2_game, Kind.DEADLINE to R.id.bar2_deadline, Kind.EVENT to R.id.bar2_event, Kind.AGE to R.id.bar2_age, Kind.LIFE to R.id.bar2_life),
         )
 
         /** 種類ラベルの背景と文字色 */
@@ -61,6 +61,7 @@ class CountdownWidget : AppWidgetProvider() {
             Kind.GAME -> R.drawable.chip_game
             Kind.DEADLINE -> R.drawable.chip_deadline
             Kind.EVENT -> R.drawable.chip_event
+            Kind.AGE -> R.drawable.chip_age
             Kind.LIFE -> R.drawable.chip_life
         }
 
@@ -68,6 +69,7 @@ class CountdownWidget : AppWidgetProvider() {
             Kind.GAME -> 0xFF9FE1CB.toInt()
             Kind.DEADLINE -> 0xFFF5C4B3.toInt()
             Kind.EVENT -> 0xFFB5D4F4.toInt()
+            Kind.AGE -> 0xFFF4C0D1.toInt()
             Kind.LIFE -> 0xFFCECBF6.toInt()
         }
 
@@ -118,7 +120,7 @@ class CountdownWidget : AppWidgetProvider() {
                 views.setTextColor(CHRONOS[i], color)
 
                 // 進み具合バー（その種類の色だけ表示）
-                val start = if (item.kind == Kind.LIFE) item.birthMillis() else item.createdAt
+                val start = item.startMillis()
                 val target = item.targetMillis()!!
                 for ((k, barId) in BARS[i]) {
                     if (k == item.kind && start != null && target > start) {

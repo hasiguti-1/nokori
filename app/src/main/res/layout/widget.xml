@@ -18,7 +18,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:fontFamily="@font/dotgothic16"
+            android:fontFamily="monospace"
             android:letterSpacing="0.08"
             android:text="残り時間"
             android:textColor="#8A93A8"
@@ -26,7 +26,7 @@
         <TextClock
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/dotgothic16"
+            android:fontFamily="monospace"
             android:format12Hour="HH:mm:ss"
             android:format24Hour="HH:mm:ss"
             android:letterSpacing="0.08"
@@ -53,9 +53,8 @@
     <LinearLayout
         android:id="@+id/row0"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:orientation="vertical">
         <LinearLayout
             android:layout_width="match_parent"
@@ -92,7 +91,7 @@
                 android:id="@+id/days0"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/dotgothic16"
+                android:fontFamily="monospace"
                 android:includeFontPadding="false"
                 android:textColor="#FFB23E"
                 android:textSize="26sp" />
@@ -109,7 +108,7 @@
                 android:id="@+id/chrono0"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/dotgothic16"
+                android:fontFamily="monospace"
                 android:includeFontPadding="false"
                 android:textColor="#FFB23E"
                 android:textSize="18sp" />
@@ -143,6 +142,14 @@
                 android:progressDrawable="@drawable/bar_event"
                 android:visibility="gone" />
             <ProgressBar
+                android:id="@+id/bar0_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
+                android:visibility="gone" />
+            <ProgressBar
                 android:id="@+id/bar0_life"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
@@ -155,9 +162,8 @@
     <LinearLayout
         android:id="@+id/row1"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:orientation="vertical">
         <LinearLayout
             android:layout_width="match_parent"
@@ -194,7 +200,7 @@
                 android:id="@+id/days1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/dotgothic16"
+                android:fontFamily="monospace"
                 android:includeFontPadding="false"
                 android:textColor="#FFB23E"
                 android:textSize="26sp" />
@@ -211,7 +217,7 @@
                 android:id="@+id/chrono1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/dotgothic16"
+                android:fontFamily="monospace"
                 android:includeFontPadding="false"
                 android:textColor="#FFB23E"
                 android:textSize="18sp" />
@@ -245,6 +251,14 @@
                 android:progressDrawable="@drawable/bar_event"
                 android:visibility="gone" />
             <ProgressBar
+                android:id="@+id/bar1_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
+                android:visibility="gone" />
+            <ProgressBar
                 android:id="@+id/bar1_life"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
@@ -257,9 +271,8 @@
     <LinearLayout
         android:id="@+id/row2"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:orientation="vertical">
         <LinearLayout
             android:layout_width="match_parent"
@@ -296,7 +309,7 @@
                 android:id="@+id/days2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/dotgothic16"
+                android:fontFamily="monospace"
                 android:includeFontPadding="false"
                 android:textColor="#FFB23E"
                 android:textSize="26sp" />
@@ -313,7 +326,7 @@
                 android:id="@+id/chrono2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/dotgothic16"
+                android:fontFamily="monospace"
                 android:includeFontPadding="false"
                 android:textColor="#FFB23E"
                 android:textSize="18sp" />
@@ -345,6 +358,14 @@
                 android:layout_height="3dp"
                 android:max="1000"
                 android:progressDrawable="@drawable/bar_event"
+                android:visibility="gone" />
+            <ProgressBar
+                android:id="@+id/bar2_age"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_age"
                 android:visibility="gone" />
             <ProgressBar
                 android:id="@+id/bar2_life"

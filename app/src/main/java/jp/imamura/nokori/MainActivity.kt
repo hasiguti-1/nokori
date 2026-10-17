@@ -118,6 +118,7 @@ class MainActivity : Activity() {
             String.format(Locale.JAPAN, "%02d:%02d", z.hour, z.minute)
         } ?: "00:00"
         var birth: LocalDate? = orig?.birth?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        var startDate: LocalDate? = orig?.start?.let { Instant.ofEpochMilli(it).atZone(Calc.zone()).toLocalDate() }
 
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -154,9 +155,23 @@ class MainActivity : Activity() {
                 time = String.format(Locale.JAPAN, "%02d:%02d", hh, mm); showTime()
             }, h, m, true).show()
         }
+        val startBtn = Button(this)
+        fun showStart() {
+            startBtn.text = startDate?.let { "バーの開始日：$it" } ?: "バーの開始日：登録日（変更する）"
+        }
+        showStart()
+        startBtn.setOnClickListener {
+            val d = startDate ?: LocalDate.now()
+            DatePickerDialog(this, { _, y, m, dd -> startDate = LocalDate.of(y, m + 1, dd); showStart() },
+                d.year, d.monthValue - 1, d.dayOfMonth).show()
+        }
+        val startNote = TextView(this).apply {
+            textSize = 11f
+            text = "進み具合のバーは、この日から期日までの経過を表します（例：発表日）"
+        }
         val dateBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(dateBtn); addView(timeBtn)
+            addView(dateBtn); addView(timeBtn); addView(startBtn); addView(startNote)
         }
 
         // 寿命
@@ -168,10 +183,11 @@ class MainActivity : Activity() {
             DatePickerDialog(this, { _, y, m, dd -> birth = LocalDate.of(y, m + 1, dd); showBirth() },
                 d.year, d.monthValue - 1, d.dayOfMonth).show()
         }
+        val ageLabel = TextView(this).apply { textSize = 12f; setPadding(0, dp(10), 0, dp(2)) }
         val age = EditText(this).apply {
-            hint = "想定寿命（歳）"
+            hint = "例：40"
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-            orig?.lifeAge?.let { setText(it.toString()) }
+            orig?.lifeAge?.let { setText(Calc.fmtAge(it)) }
         }
         val calcOut = TextView(this).apply { textSize = 12f }
         val calcBtn = Button(this).apply {
@@ -185,7 +201,7 @@ class MainActivity : Activity() {
                 val a = Calc.ageNow(bm)
                 val r = Calc.remainingLife(a)
                 val life = Math.round((a + r) * 100) / 100.0
-                age.setText(life.toString())
+                age.setText(Calc.fmtAge(life))
                 calcOut.text = String.format(Locale.JAPAN, "今 %.1f歳 ＋ 平均余命 %.2f年 ＝ %.2f歳", a, r, life)
             }
         }
@@ -195,7 +211,7 @@ class MainActivity : Activity() {
         }
         val lifeBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(birthBtn); addView(age); addView(calcBtn); addView(calcOut); addView(lifeNote)
+            addView(birthBtn); addView(ageLabel); addView(age); addView(calcBtn); addView(calcOut); addView(lifeNote)
         }
 
         val note = EditText(this).apply {
@@ -208,9 +224,15 @@ class MainActivity : Activity() {
         }
 
         fun syncKind() {
-            val life = kinds[kind.selectedItemPosition] == Kind.LIFE
-            lifeBox.visibility = if (life) View.VISIBLE else View.GONE
-            dateBox.visibility = if (life) View.GONE else View.VISIBLE
+            val k = kinds[kind.selectedItemPosition]
+            lifeBox.visibility = if (k.usesBirth) View.VISIBLE else View.GONE
+            dateBox.visibility = if (k.usesBirth) View.GONE else View.VISIBLE
+            // 平均余命の計算は寿命のときだけ
+            val life = k == Kind.LIFE
+            calcBtn.visibility = if (life) View.VISIBLE else View.GONE
+            lifeNote.visibility = if (life) View.VISIBLE else View.GONE
+            ageLabel.text = if (life) "想定寿命（歳）" else "何歳になるまで（歳）"
+            if (!life) calcOut.text = "生まれた日から、この年齢の誕生日までをバーで表示します"
         }
         kind.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) = syncKind()
@@ -240,14 +262,15 @@ class MainActivity : Activity() {
                 }
                 val k = kinds[kind.selectedItemPosition]
                 val newItem: Item
-                if (k == Kind.LIFE) {
+                if (k.usesBirth) {
                     val b = birth
                     if (b == null) {
                         calcOut.text = "生年月日を選んでください"; return@setOnClickListener
                     }
                     val a = age.text.toString().toDoubleOrNull()
                     if (a == null || a <= 0) {
-                        age.error = "想定寿命を入れるか「平均余命から計算」を押してください"; return@setOnClickListener
+                        age.error = if (k == Kind.LIFE) "想定寿命を入れるか「平均余命から計算」を押してください" else "年齢を入れてください"
+                        return@setOnClickListener
                     }
                     newItem = Item(
                         id = orig?.id ?: java.util.UUID.randomUUID().toString(),
@@ -263,6 +286,7 @@ class MainActivity : Activity() {
                     newItem = Item(
                         id = orig?.id ?: java.util.UUID.randomUUID().toString(),
                         title = title, kind = k, target = Calc.parseDateTime(d.toString(), time),
+                        start = startDate?.atStartOfDay(Calc.zone())?.toInstant()?.toEpochMilli(),
                         note = note.text.toString().trim(), showInWidget = widget.isChecked,
                         createdAt = orig?.createdAt ?: System.currentTimeMillis(),
                     )
@@ -314,15 +338,15 @@ class MainActivity : Activity() {
                 leftTv.textSize = 24f
                 leftTv.setTextColor(getColor(when {
                     t < now -> R.color.muted
-                    item.kind != Kind.LIFE && t - now < 7 * Calc.DAY_MS -> R.color.urgent
+                    item.kind == Kind.DEADLINE && t - now < 7 * Calc.DAY_MS -> R.color.urgent
                     else -> R.color.led
                 }))
             }
 
             val meta = mutableListOf<String>()
             if (t != null) {
-                if (item.kind == Kind.LIFE) {
-                    meta += "想定 ${item.lifeAge}歳 → ${Calc.formatDate(t, false)}"
+                if (item.kind.usesBirth) {
+                    meta += "${Calc.fmtAge(item.lifeAge)}歳 → ${Calc.formatDate(t, false)}"
                     item.birthMillis()?.let { b -> meta += String.format(Locale.JAPAN, "今 %.1f歳", Calc.ageNow(b, now)) }
                     if (t > now) meta += String.format(Locale.JAPAN, "約%.1f年", (t - now) / Calc.YEAR_MS)
                 } else {
@@ -332,7 +356,7 @@ class MainActivity : Activity() {
             if (item.note.isNotBlank()) meta += item.note
             metaTv.text = meta.joinToString("　")
 
-            val start = if (item.kind == Kind.LIFE) item.birthMillis() else item.createdAt
+            val start = item.startMillis()
             if (t != null && start != null && t > start) {
                 bar.visibility = View.VISIBLE
                 bar.progress = (((now - start).toDouble() / (t - start)) * 1000).toInt().coerceIn(0, 1000)
