@@ -30,7 +30,9 @@ class CountdownWidget : AppWidgetProvider() {
             ACTION_TICK,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
-            Intent.ACTION_DATE_CHANGED -> refreshAll(ctx)
+            Intent.ACTION_DATE_CHANGED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_BOOT_COMPLETED -> refreshAll(ctx)
         }
     }
 
