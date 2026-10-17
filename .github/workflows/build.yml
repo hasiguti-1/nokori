@@ -25,7 +25,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.7"
+          gradle-version: "8.11.1"
 
       - name: 署名鍵を復号
         env:
@@ -40,15 +40,20 @@ jobs:
       - name: ビルド
         env:
           NOKORI_KEY_PASSWORD: ${{ secrets.NOKORI_KEY_PASSWORD }}
-        run: gradle assembleRelease --no-daemon --stacktrace
+        # apk はスマホに直接入れる用（Obtainium）、aab は Google Play に提出する用
+        run: gradle assembleRelease bundleRelease --no-daemon --stacktrace
 
       - name: ファイル名をそろえる
-        run: cp app/build/outputs/apk/release/app-release.apk nokori.apk
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk nokori.apk
+          cp app/build/outputs/bundle/release/app-release.aab nokori-play.aab
 
       - name: リリースに置く（スマホからダウンロードする場所）
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: 残り時間 1.0.${{ github.run_number }}
-          files: nokori.apk
+          files: |
+            nokori.apk
+            nokori-play.aab
           make_latest: true

@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "jp.imamura.nokori"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "jp.imamura.nokori"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         // GitHub Actions の実行番号をバージョンにする（上書きインストールできるように）
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")

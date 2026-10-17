@@ -1,8 +1,12 @@
 package jp.imamura.nokori
 
 import android.app.Activity
+import android.app.AlarmManager
 import android.app.TimePickerDialog
+import android.content.Intent
 import android.graphics.Typeface
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.view.View
@@ -166,11 +170,62 @@ class SettingsActivity : Activity() {
             box.addView(check(k.label, s.widgetShows(k)) { s.setWidgetShows(k, it) })
         }
 
-        setContentView(ScrollView(this).apply { addView(box) })
+        // ── 時刻ぴったりの更新（Android 12 以降は許可が必要） ──
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            box.addView(heading("時刻ぴったりの更新"))
+            box.addView(note("許可すると、日付や分が変わった瞬間にウィジェットを描き直します。許可しなくても使えますが、表示の切り替わりが最大1分ほど遅れることがあります"))
+            val st = TextView(this).apply { textSize = 14f }
+            val btn = Button(this).apply {
+                text = "許可の画面を開く"
+                setOnClickListener {
+                    try {
+                        startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                            Uri.parse("package:$packageName")))
+                    } catch (e: Exception) {
+                        startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:$packageName")))
+                    }
+                }
+            }
+            box.addView(st)
+            box.addView(btn)
+            exactStatus = st
+            exactButton = btn
+        }
+
+        // ── このアプリについて ──
+        box.addView(heading("このアプリについて"))
+        val ver = try {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        } catch (e: Exception) { "" }
+        box.addView(note("バージョン $ver"))
+        box.addView(note("登録した内容はこのスマホの中だけに保存します。外部への送信はしません"))
+        box.addView(link("プライバシーポリシー", PRIVACY_URL))
+        box.addView(note("平均余命：${Calc.LIFE_SOURCE}をもとに作成（5歳刻みの値の間は直線で補間）"))
+        box.addView(link("出典（厚生労働省）", Calc.LIFE_SOURCE_URL))
+        box.addView(note("ドット文字：DotGothic16（SIL Open Font License 1.1）"))
+
+        val scroll = ScrollView(this).apply { addView(box) }
+        setContentView(scroll)
+        // Android 15 以降は画面の端まで描くので、ナビゲーションバーに重ならないよう余白を足す
+        scroll.padForSystemBars()
         this.payDay = payDay
     }
 
     private var payDay: EditText? = null
+    private var exactStatus: TextView? = null
+    private var exactButton: Button? = null
+
+    override fun onResume() {
+        super.onResume()
+        // 許可の画面から戻ってきたときに表示を合わせる
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val ok = getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() == true
+            exactStatus?.text = if (ok) "いまの状態：許可されています" else "いまの状態：許可されていません"
+            exactButton?.text = if (ok) "許可の画面を開く（取り消す場合）" else "許可の画面を開く"
+            CountdownWidget.refreshAll(this)
+        }
+    }
 
     override fun onPause() {
         super.onPause()
@@ -192,6 +247,20 @@ class SettingsActivity : Activity() {
     private fun note(t: String) = TextView(this).apply {
         text = t; textSize = 12f; setTextColor(getColor(R.color.muted))
         setPadding(0, 0, 0, dp(6))
+    }
+
+    /** 押すとブラウザで開く文字 */
+    private fun link(label: String, url: String) = TextView(this).apply {
+        text = label; textSize = 14f; setTextColor(getColor(R.color.led))
+        paintFlags = paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
+        setPadding(0, dp(2), 0, dp(10))
+        setOnClickListener {
+            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { }
+        }
+    }
+
+    companion object {
+        const val PRIVACY_URL = "https://github.com/hasiguti-1/nokori/blob/main/docs/privacy.md"
     }
 
     private fun check(label: String, on: Boolean, onChange: (Boolean) -> Unit) = CheckBox(this).apply {

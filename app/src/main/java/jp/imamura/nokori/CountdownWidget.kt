@@ -35,7 +35,8 @@ class CountdownWidget : AppWidgetProvider() {
             Intent.ACTION_TIMEZONE_CHANGED,
             Intent.ACTION_DATE_CHANGED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
-            Intent.ACTION_BOOT_COMPLETED -> refreshAll(ctx)
+            Intent.ACTION_BOOT_COMPLETED,
+            ACTION_EXACT_ALARM_PERMISSION -> refreshAll(ctx)
         }
     }
 
@@ -46,6 +47,9 @@ class CountdownWidget : AppWidgetProvider() {
 
     companion object {
         private const val ACTION_TICK = "jp.imamura.nokori.TICK"
+        /** 「時刻ぴったりの更新」の許可が変わったとき（Android 12 以降） */
+        private const val ACTION_EXACT_ALARM_PERMISSION =
+            "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
         /** 行ごとの部品のID（レイアウトは tools/gen_widget_layouts.py で生成） */
         private fun id(ctx: Context, name: String): Int =
             ctx.resources.getIdentifier(name, "id", ctx.packageName)

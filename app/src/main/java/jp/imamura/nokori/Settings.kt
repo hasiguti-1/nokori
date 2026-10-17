@@ -68,6 +68,11 @@ class Settings(ctx: Context) {
         get() = p.getInt("payday", 25)
         set(v) = p.edit().putInt("payday", v.coerceIn(1, 31)).apply()
 
+    /** 平均余命の計算に女性の表を使うか（最後に選んだほうを覚えておく） */
+    var lifeFemale: Boolean
+        get() = p.getBoolean("life_female", false)
+        set(v) = p.edit().putBoolean("life_female", v).apply()
+
     /** 週の始まり（true=月曜、false=日曜） */
     var weekStartsMonday: Boolean
         get() = p.getBoolean("week_monday", true)

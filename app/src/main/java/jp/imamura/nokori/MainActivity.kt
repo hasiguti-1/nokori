@@ -59,6 +59,8 @@ class MainActivity : Activity() {
         frame.addView(empty)
         list.emptyView = empty
         setContentView(frame)
+        // Android 15 以降は画面の端まで描くので、下のナビゲーションバーに重ならないよう余白を足す
+        list.padForSystemBars()
 
         adapter = ItemAdapter()
         list.adapter = adapter
@@ -247,6 +249,17 @@ class MainActivity : Activity() {
             orig?.lifeAge?.let { setText(Calc.fmtAge(it)) }
         }
         val calcOut = TextView(this).apply { textSize = 12f }
+        // 平均余命の表（男性／女性）。最後に選んだほうを覚えておく
+        val prefs = Settings(this)
+        val sexGroup = android.widget.RadioGroup(this).apply { orientation = android.widget.RadioGroup.HORIZONTAL }
+        sexGroup.addView(android.widget.RadioButton(this).apply {
+            id = 3100; text = "男性の表"; isChecked = !prefs.lifeFemale
+            setOnClickListener { prefs.lifeFemale = false }
+        })
+        sexGroup.addView(android.widget.RadioButton(this).apply {
+            id = 3101; text = "女性の表"; isChecked = prefs.lifeFemale
+            setOnClickListener { prefs.lifeFemale = true }
+        })
         val calcBtn = Button(this).apply {
             text = "平均余命から計算"
             setOnClickListener {
@@ -254,17 +267,19 @@ class MainActivity : Activity() {
                 if (b == null) {
                     calcOut.text = "先に生年月日を選んでください"; return@setOnClickListener
                 }
+                val female = prefs.lifeFemale
                 val bm = b.atStartOfDay(Calc.zone()).toInstant().toEpochMilli()
                 val a = Calc.ageNow(bm)
-                val r = Calc.remainingLife(a)
+                val r = Calc.remainingLife(a, female)
                 val life = Math.round((a + r) * 100) / 100.0
                 age.setText(Calc.fmtAge(life))
-                calcOut.text = String.format(Locale.JAPAN, "今 %.1f歳 ＋ 平均余命 %.2f年 ＝ %.2f歳", a, r, life)
+                calcOut.text = String.format(Locale.JAPAN, "今 %.1f歳 ＋ 平均余命 %.2f年（%s） ＝ %.2f歳",
+                    a, r, if (female) "女性" else "男性", life)
             }
         }
         val lifeNote = TextView(this).apply {
             textSize = 11f
-            text = "厚生労働省「令和7年簡易生命表」男性の平均余命を使います（5歳刻みの間は直線補間）"
+            text = "出典：${Calc.LIFE_SOURCE}をもとに作成（5歳刻みの間は直線で補間）。平均的な目安で、個人の寿命を予測するものではありません"
         }
         // バーの開始（生まれた日／登録日／日付を選ぶ）
         val created = orig?.createdAt ?: System.currentTimeMillis()
@@ -294,7 +309,7 @@ class MainActivity : Activity() {
         showBarPick()
         val lifeBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(birthBtn); addView(ageLabel); addView(age); addView(calcBtn); addView(calcOut); addView(lifeNote)
+            addView(birthBtn); addView(ageLabel); addView(age); addView(sexGroup); addView(calcBtn); addView(calcOut); addView(lifeNote)
             addView(label("進み具合バーの開始")); addView(barGroup); addView(barPick)
         }
 
@@ -318,6 +333,7 @@ class MainActivity : Activity() {
             // 平均余命の計算は寿命のときだけ
             val life = k == Kind.LIFE
             calcBtn.visibility = if (life) View.VISIBLE else View.GONE
+            sexGroup.visibility = if (life) View.VISIBLE else View.GONE
             lifeNote.visibility = if (life) View.VISIBLE else View.GONE
             ageLabel.text = if (life) "想定寿命（歳）" else "何歳になるまで（歳）"
             if (!life) calcOut.text = "生まれた日から、この年齢の誕生日までをバーで表示します"

@@ -140,24 +140,26 @@ object Store {
         CountdownWidget.refreshAll(ctx)
     }
 
-    /** 初回だけ入れておく項目 */
-    private fun seed(): List<Item> = listOf(
-        Item(
-            title = "GTA6 発売日", kind = Kind.GAME,
-            target = Calc.parseDateTime("2026-11-19", "00:00"),
-            note = "Take-Two決算（2026年5月）で11月19日を再明言",
-        ),
-        Item(
-            title = "2027年になるまで", kind = Kind.EVENT,
-            target = Calc.parseDateTime("2027-01-01", "00:00"),
-        ),
-    )
+    /** 初回だけ入れておく項目（だれが入れても意味が通る見本：次の元日まで） */
+    private fun seed(): List<Item> {
+        val next = LocalDate.now(Calc.zone()).year + 1
+        return listOf(
+            Item(
+                title = "${next}年になるまで", kind = Kind.EVENT,
+                target = Calc.parseDateTime("$next-01-01", "00:00"),
+            ),
+        )
+    }
 }
 
 /** 計算と表示用の整形 */
 object Calc {
     const val DAY_MS = 86_400_000L
     const val YEAR_MS = 365.2425 * 86_400_000.0
+
+    /** 平均余命の出典（アプリ内の表示にも使う） */
+    const val LIFE_SOURCE = "厚生労働省「令和7年簡易生命表」主な年齢の平均余命"
+    const val LIFE_SOURCE_URL = "https://www.mhlw.go.jp/toukei/saikin/hw/life/life25/dl/life25-15.pdf"
 
     /** 令和7年簡易生命表（厚生労働省）男性の平均余命 */
     private val LIFE_M = listOf(
@@ -166,17 +168,25 @@ object Calc {
         60 to 23.86, 65 to 19.68, 70 to 15.78, 75 to 12.24, 80 to 9.10, 85 to 6.44, 90 to 4.38,
     )
 
+    /** 令和7年簡易生命表（厚生労働省）女性の平均余命 */
+    private val LIFE_F = listOf(
+        0 to 87.33, 5 to 82.54, 10 to 77.56, 15 to 72.60, 20 to 67.67, 25 to 62.77,
+        30 to 57.85, 35 to 52.94, 40 to 48.05, 45 to 43.20, 50 to 38.41, 55 to 33.70,
+        60 to 29.07, 65 to 24.52, 70 to 20.10, 75 to 15.88, 80 to 11.95, 85 to 8.47, 90 to 5.66,
+    )
+
     fun zone(): ZoneId = ZoneId.systemDefault()
 
-    /** 年齢 age 歳の平均余命（5歳刻みの間は直線で補間） */
-    fun remainingLife(age: Double): Double {
-        if (age <= 0) return LIFE_M.first().second
-        for (i in 0 until LIFE_M.size - 1) {
-            val (a0, r0) = LIFE_M[i]
-            val (a1, r1) = LIFE_M[i + 1]
+    /** 年齢 age 歳の平均余命（5歳刻みの間は直線で補間）。female=true なら女性の表 */
+    fun remainingLife(age: Double, female: Boolean = false): Double {
+        val table = if (female) LIFE_F else LIFE_M
+        if (age <= 0) return table.first().second
+        for (i in 0 until table.size - 1) {
+            val (a0, r0) = table[i]
+            val (a1, r1) = table[i + 1]
             if (age >= a0 && age <= a1) return r0 + (r1 - r0) * (age - a0) / (a1 - a0)
         }
-        return LIFE_M.last().second
+        return table.last().second
     }
 
     /** 40.0 → "40"、81.25 → "81.25" */

@@ -3,11 +3,10 @@
 
     <!-- 再起動後にウィジェットを描き直すため -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- ウィジェットを決まった時刻（日付・分の切れ目）に正確に描き直すため -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission
-        android:name="android.permission.SCHEDULE_EXACT_ALARM"
-        android:maxSdkVersion="32" />
+    <!-- ウィジェットを決まった時刻（日付・分の切れ目）に正確に描き直すため。
+         Google Play では USE_EXACT_ALARM は目覚まし・カレンダー向けに限られるので、
+         利用者が設定画面で許可する SCHEDULE_EXACT_ALARM を使う（許可がなければ時間枠つきで描き直す） -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -40,6 +39,7 @@
                 <action android:name="android.intent.action.DATE_CHANGED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
