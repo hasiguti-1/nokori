@@ -69,6 +69,7 @@
                 android:maxLines="1"
                 android:textColor="#E7EAF2"
                 android:textSize="16sp" />
+            
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -143,6 +144,7 @@
                 android:maxLines="1"
                 android:textColor="#E7EAF2"
                 android:textSize="16sp" />
+            
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -217,6 +219,7 @@
                 android:maxLines="1"
                 android:textColor="#E7EAF2"
                 android:textSize="16sp" />
+            
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"

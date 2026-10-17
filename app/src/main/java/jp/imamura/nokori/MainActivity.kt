@@ -68,10 +68,7 @@ class MainActivity : Activity() {
             else openEditor(it)
         }
         list.setOnItemLongClickListener { _, _, pos, _ ->
-            val it = adapter.getItem(pos)
-            if (it.kind == Kind.REPEAT) {
-                android.widget.Toast.makeText(this, "くり返しは設定画面でオフにできます", android.widget.Toast.LENGTH_SHORT).show()
-            } else confirmDelete(it)
+            longPressMenu(adapter.getItem(pos))
             true
         }
         // 初回の初期データを保存しておく
@@ -130,11 +127,40 @@ class MainActivity : Activity() {
             .show()
     }
 
+    /** 長押しメニュー：ウィジェットに固定／固定をはずす・削除 */
+    private fun longPressMenu(item: Item) {
+        val s = Settings(this)
+        val pinned = s.isPinned(item.id)
+        val labels = mutableListOf(if (pinned) "固定をはずす" else "ウィジェットに固定する")
+        if (item.kind != Kind.REPEAT) labels += "削除"
+        AlertDialog.Builder(this)
+            .setTitle(item.title)
+            .setItems(labels.toTypedArray()) { _, which ->
+                if (which == 0) togglePin(item.id, !pinned)
+                else confirmDelete(item)
+            }
+            .show()
+    }
+
+    /** 固定をつける／はずす（上限を超えるときは知らせる） */
+    private fun togglePin(id: String, on: Boolean): Boolean {
+        if (!Settings(this).setPinned(id, on)) {
+            android.widget.Toast.makeText(this,
+                "固定は${Settings.MAX_PINNED}件までです。ほかの項目の固定をはずしてください",
+                android.widget.Toast.LENGTH_LONG).show()
+            return false
+        }
+        CountdownWidget.refreshAll(this)
+        adapter.notifyDataSetChanged()
+        return true
+    }
+
     private fun confirmDelete(item: Item) {
         AlertDialog.Builder(this)
             .setMessage("「${item.title}」を削除しますか？")
             .setPositiveButton("削除する") { _, _ ->
                 items.removeAll { it.id == item.id }
+                Settings(this).setPinned(item.id, false)
                 persist()
             }
             .setNegativeButton("やめる", null)
@@ -280,6 +306,10 @@ class MainActivity : Activity() {
             text = "ホーム画面のウィジェットに出す"
             isChecked = orig?.showInWidget ?: true
         }
+        val pin = CheckBox(this).apply {
+            text = "ウィジェットに固定する（常に上に表示・最大${Settings.MAX_PINNED}件）"
+            isChecked = orig?.let { Settings(this@MainActivity).isPinned(it.id) } ?: false
+        }
 
         fun syncKind() {
             val k = kinds[kind.selectedItemPosition]
@@ -308,6 +338,7 @@ class MainActivity : Activity() {
         box.addView(label("残りの表示単位")); box.addView(unitSpin)
         box.addView(label("メモ")); box.addView(note)
         box.addView(widget)
+        box.addView(pin)
         syncKind()
 
         val scroll = android.widget.ScrollView(this).apply { addView(box) }
@@ -362,6 +393,10 @@ class MainActivity : Activity() {
                         createdAt = created,
                     )
                 }
+                val wasPinned = Settings(this).isPinned(newItem.id)
+                if (pin.isChecked != wasPinned && !togglePin(newItem.id, pin.isChecked)) {
+                    pin.error = "固定は${Settings.MAX_PINNED}件までです"; return@setOnClickListener
+                }
                 val i = items.indexOfFirst { it.id == newItem.id }
                 if (i >= 0) items[i] = newItem else items.add(newItem)
                 persist()
@@ -374,13 +409,18 @@ class MainActivity : Activity() {
     /** 一覧の1行 */
     private inner class ItemAdapter : BaseAdapter() {
         private var view: List<Item> = emptyList()
+        private var pinnedIds: Set<String> = emptySet()
 
         override fun notifyDataSetChanged() {
             view = Calc.sorted(items + Repeats.build(this@MainActivity))
+            pinnedIds = Settings(this@MainActivity).pinned.toSet()
             super.notifyDataSetChanged()
         }
 
-        init { view = Calc.sorted(items + Repeats.build(this@MainActivity)) }
+        init {
+            view = Calc.sorted(items + Repeats.build(this@MainActivity))
+            pinnedIds = Settings(this@MainActivity).pinned.toSet()
+        }
 
         override fun getCount() = view.size
         override fun getItem(position: Int): Item = view[position]
@@ -397,7 +437,7 @@ class MainActivity : Activity() {
             val item = view[position]
             val now = System.currentTimeMillis()
             val t = item.targetMillis()
-            kindTv.text = item.kind.label
+            kindTv.text = if (pinnedIds.contains(item.id)) "${item.kind.label}　・ウィジェットに固定" else item.kind.label
             titleTv.text = item.title
 
             if (t == null) {

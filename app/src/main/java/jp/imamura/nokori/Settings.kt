@@ -87,8 +87,42 @@ class Settings(ctx: Context) {
     fun widgetShows(k: Kind): Boolean = p.getBoolean("widget_" + k.name, true)
     fun setWidgetShows(k: Kind, v: Boolean) = p.edit().putBoolean("widget_" + k.name, v).apply()
 
+    /** 固定した項目のID（固定した順。くり返しカウンターは "rep_day" などのID） */
+    var pinned: List<String>
+        get() = (p.getString("pinned", "") ?: "").split(",").filter { it.isNotBlank() }
+        set(v) = p.edit().putString("pinned", v.distinct().take(MAX_PINNED).joinToString(",")).apply()
+
+    fun isPinned(id: String) = id in pinned
+
+    /** 固定をつける／はずす。上限を超えるときは false を返して何もしない */
+    fun setPinned(id: String, on: Boolean): Boolean {
+        val now = pinned
+        if (on) {
+            if (id in now) return true
+            if (now.size >= MAX_PINNED) return false
+            pinned = now + id
+        } else {
+            pinned = now - id
+        }
+        return true
+    }
+
+    /** ウィジェットを「固定＋切り替え」で表示するか（false なら近い順に並べる） */
+    var rotate: Boolean
+        get() = p.getBoolean("rotate", false)
+        set(v) = p.edit().putBoolean("rotate", v).apply()
+
+    /** 切り替えの間隔（秒） */
+    var rotateSec: Int
+        get() = p.getInt("rotate_sec", 10).let { if (it in ROTATE_CHOICES) it else 10 }
+        set(v) = p.edit().putInt("rotate_sec", v).apply()
+
     companion object {
         const val MAX_ROWS = 6
+        /** 固定できる件数 */
+        const val MAX_PINNED = 2
+        /** 切り替え間隔の選択肢（秒） */
+        val ROTATE_CHOICES = listOf(5, 10, 15, 20, 30, 60)
     }
 }
 

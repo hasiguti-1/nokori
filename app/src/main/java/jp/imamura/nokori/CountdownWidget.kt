@@ -14,7 +14,9 @@ import android.widget.RemoteViews
 import java.util.Locale
 
 /**
- * ホーム画面ウィジェット。近い順に3件を表示する。
+ * ホーム画面ウィジェット。固定した項目（最大2件）を上に出し、その下は
+ * 「近い順に並べる」か「1件ずつ一定間隔で切り替える」かを設定で選ぶ。
+ * 切り替えは描き直しのアラームで行い、何件目を出すかは時刻から決める。
  * 「◯日」は文字で表示し、1日未満の部分（時:分:秒）は Android 標準の
  * Chronometer に数えさせるので、アプリが動いていなくても秒が進む。
  * 日数が変わる瞬間にアラームで描き直す。
@@ -79,17 +81,39 @@ class CountdownWidget : AppWidgetProvider() {
         private fun render(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
             val now = System.currentTimeMillis()
             val settings = Settings(ctx)
-            val shown = Calc.sorted(Store.load(ctx) + Repeats.build(ctx, now), now)
-                .filter { it.showInWidget && settings.widgetShows(it.kind) }
+            val all = Calc.sorted(Store.load(ctx) + Repeats.build(ctx, now), now)
                 .filter { (it.targetMillis() ?: Long.MIN_VALUE) > now }
-                .take(settings.widgetCount)
+            // 固定した項目（固定した順。固定は「ウィジェットに出す」設定より優先）
+            val pinned = settings.pinned.mapNotNull { pid -> all.firstOrNull { it.id == pid } }
+                .take(Settings.MAX_PINNED)
+            val pinnedIds = pinned.map { it.id }.toSet()
+            val rest = all.filter { it.id !in pinnedIds }
+                .filter { it.showInWidget && settings.widgetShows(it.kind) }
 
             var nextRefresh = Long.MAX_VALUE
+            // 切り替え中の行（行番号と「2/5」の表示）
+            var rotRow: Pair<Int, String>? = null
+            val shown: List<Item>
+            if (settings.rotate) {
+                // 固定の下に1行だけ出し、一定間隔で次の項目に切り替える。
+                // 何件目を出すかは時刻から決めるので、状態を保存しなくてよい
+                val period = settings.rotateSec * 1000L
+                val slot = now / period
+                val pick = rest.getOrNull((slot % maxOf(1, rest.size)).toInt())
+                shown = pinned + listOfNotNull(pick)
+                if (pick != null && rest.size > 1) {
+                    rotRow = pinned.size to "${(slot % rest.size).toInt() + 1}/${rest.size}"
+                    nextRefresh = (slot + 1) * period + 50
+                }
+            } else {
+                shown = (pinned + rest).take(maxOf(settings.widgetCount, pinned.size))
+            }
+
             // 秒ありは描き直すたびにレイアウトを交互に替える（全ウィジェット共通で1回だけ切り替え）
             val secLayout = if (settings.font == FontChoice.DOT_SEC) nextSecLayout(ctx) else 0
             // ドット文字は幅に合わせて画像を描くので、ウィジェットごとに作る
             for (wid in ids) {
-                val (views, next) = build(ctx, mgr, wid, settings, shown, now, secLayout)
+                val (views, next) = build(ctx, mgr, wid, settings, shown, now, secLayout, rotRow)
                 mgr.updateAppWidget(wid, views)
                 nextRefresh = minOf(nextRefresh, next)
             }
@@ -100,6 +124,7 @@ class CountdownWidget : AppWidgetProvider() {
         private fun build(
             ctx: Context, mgr: AppWidgetManager, wid: Int,
             settings: Settings, shown: List<Item>, now: Long, secLayout: Int,
+            rotRow: Pair<Int, String>?,
         ): Pair<RemoteViews, Long> {
             val elapsedNow = SystemClock.elapsedRealtime()
             val dot = settings.font.isImage
@@ -135,6 +160,12 @@ class CountdownWidget : AppWidgetProvider() {
                 val parts = Calc.parts(item, now)!!
                 views.setViewVisibility(rowId, View.VISIBLE)
 
+                // 切り替え中の行だけ「2/5」を出す
+                val posId = id(ctx, "pos$i")
+                val pos = rotRow?.takeIf { it.first == i }?.second
+                views.setTextViewText(posId, pos ?: "")
+                views.setViewVisibility(posId, if (pos != null) View.VISIBLE else View.GONE)
+
                 // 種類ラベル
                 val chip = id(ctx, "chip$i")
                 views.setTextViewText(chip, item.kind.label)
@@ -146,7 +177,7 @@ class CountdownWidget : AppWidgetProvider() {
 
                 if (dot) {
                     // 名前と数字をドット文字の画像で（種類ラベルの幅ぶん名前を短く）
-                    val titleMax = innerPx - DotRenderer.dp(ctx, 72f).toInt()
+                    val titleMax = innerPx - DotRenderer.dp(ctx, if (pos != null) 110f else 72f).toInt()
                     views.setImageViewBitmap(id(ctx, "titleimg$i"),
                         DotRenderer.text(ctx, item.title, 16f, DotRenderer.TITLE, maxOf(50, titleMax)))
                     val clock = parts.clockMs

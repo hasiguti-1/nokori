@@ -23,6 +23,16 @@ SAMPLE = [
     ("くり返し", "chip_repeat", "#D3D1C7", "今日が終わるまで", "0", "06:37:03", "#FFB23E", "bar_repeat", 72),
 ]
 
+POS = '''<TextView
+                android:id="@+id/pos{i}"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:fontFamily="{font}"
+                android:textColor="#8A93A8"
+                android:textSize="11sp"
+                android:visibility="gone" />'''
+
 
 def row(i, font, sample=None):
     """1件分の行。sample があれば見本用に文字を埋め、時計の代わりに普通の文字にする。"""
@@ -70,6 +80,8 @@ def row(i, font, sample=None):
                 android:visibility="gone" />''' for k in KINDS)
         rid = f'android:id="@+id/row{i}"'
         unit_id = f'android:id="@+id/unit{i}"'
+    # 切り替え中の行に「2/5」を出す部品（見本には不要）
+    pos = "" if sample else POS.format(i=i, font=font)
     return f'''
     <LinearLayout
         {rid}
@@ -101,6 +113,7 @@ def row(i, font, sample=None):
                 android:maxLines="1"
                 android:textColor="#E7EAF2"
                 android:textSize="16sp" />
+            {pos}
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -263,6 +276,17 @@ def dot_layout(secs=False):
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
+            <TextView
+                android:id="@+id/pos{i}"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:textColor="#8A93A8"
+                android:textSize="11sp"
+                android:visibility="gone" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"

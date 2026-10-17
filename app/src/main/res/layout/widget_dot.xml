@@ -59,6 +59,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
+            <TextView
+                android:id="@+id/pos0"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:textColor="#8A93A8"
+                android:textSize="11sp"
+                android:visibility="gone" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -153,6 +164,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
+            <TextView
+                android:id="@+id/pos1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:textColor="#8A93A8"
+                android:textSize="11sp"
+                android:visibility="gone" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -247,6 +269,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
+            <TextView
+                android:id="@+id/pos2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:textColor="#8A93A8"
+                android:textSize="11sp"
+                android:visibility="gone" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -341,6 +374,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
+            <TextView
+                android:id="@+id/pos3"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:textColor="#8A93A8"
+                android:textSize="11sp"
+                android:visibility="gone" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -435,6 +479,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
+            <TextView
+                android:id="@+id/pos4"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:textColor="#8A93A8"
+                android:textSize="11sp"
+                android:visibility="gone" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -529,6 +584,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:scaleType="center" />
+            <TextView
+                android:id="@+id/pos5"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:textColor="#8A93A8"
+                android:textSize="11sp"
+                android:visibility="gone" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"

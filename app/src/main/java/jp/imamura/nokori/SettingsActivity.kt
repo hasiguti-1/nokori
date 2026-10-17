@@ -116,9 +116,40 @@ class SettingsActivity : Activity() {
         })
         box.addView(week)
 
+        // ── 表示のしかた（並べる／固定＋切り替え） ──
+        box.addView(heading("ウィジェットの表示のしかた"))
+        box.addView(note("固定は、一覧で項目を長押し →「ウィジェットに固定する」（最大${Settings.MAX_PINNED}件）。どちらの表示でも固定した項目が上に出ます"))
+        val rotBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(32), 0, 0, 0)
+        }
+        val mode = RadioGroup(this)
+        mode.addView(RadioButton(this).apply {
+            id = 2200; text = "近い順に並べる（件数は下で選ぶ）"; isChecked = !s.rotate
+            setOnClickListener { s.rotate = false; rotBox.visibility = View.GONE }
+        })
+        mode.addView(RadioButton(this).apply {
+            id = 2201; text = "固定＋切り替え（固定の下で1件ずつ切り替える）"; isChecked = s.rotate
+            setOnClickListener { s.rotate = true; rotBox.visibility = View.VISIBLE }
+        })
+        box.addView(mode)
+        rotBox.addView(note("切り替えの間隔（画面が消えている間は止まります）"))
+        // 6つ横に並べると画面からはみ出すので縦に並べる
+        val interval = RadioGroup(this)
+        Settings.ROTATE_CHOICES.forEachIndexed { i, sec ->
+            interval.addView(RadioButton(this).apply {
+                id = 2300 + i; text = if (sec >= 60) "${sec / 60}分" else "${sec}秒"
+                isChecked = s.rotateSec == sec
+                setOnClickListener { s.rotateSec = sec }
+            })
+        }
+        rotBox.addView(interval)
+        rotBox.visibility = if (s.rotate) View.VISIBLE else View.GONE
+        box.addView(rotBox)
+
         // ── ウィジェットに出す件数 ──
         box.addView(heading("ウィジェットに出す件数"))
-        box.addView(note("件数を増やしたら、ホーム画面でウィジェットを長押しして縦に広げてください"))
+        box.addView(note("「近い順に並べる」のときの件数です。増やしたら、ホーム画面でウィジェットを長押しして縦に広げてください"))
         val count = RadioGroup(this).apply { orientation = RadioGroup.HORIZONTAL }
         for (n in 1..Settings.MAX_ROWS) {
             count.addView(RadioButton(this).apply {
