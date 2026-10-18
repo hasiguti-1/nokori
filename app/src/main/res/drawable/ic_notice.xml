@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 通知の小さいアイコン（砂時計。ic_fg.xml と同じ形を白一色で） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <group android:translateX="-30" android:translateY="-30">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M38,32h32v4h-3v6c0,5 -4,9 -9,12c5,3 9,7 9,12v6h3v4H38v-4h3v-6c0,-5 4,-9 9,-12c-5,-3 -9,-7 -9,-12v-6h-3z M45,36v6c0,4 4,7 9,9.5c5,-2.5 9,-5.5 9,-9.5v-6z M54,58c-5,2.5 -9,5.5 -9,8v6h18v-6c0,-2.5 -4,-5.5 -9,-8z" />
+    </group>
+</vector>

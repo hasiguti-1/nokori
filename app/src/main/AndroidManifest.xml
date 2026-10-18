@@ -7,6 +7,8 @@
          Google Play では USE_EXACT_ALARM は目覚まし・カレンダー向けに限られるので、
          利用者が設定画面で許可する SCHEDULE_EXACT_ALARM を使う（許可がなければ時間枠つきで描き直す） -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- ロック画面に残り時間を出す通知のため（Android 13 以降は利用者の許可が要る） -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"

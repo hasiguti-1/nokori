@@ -73,6 +73,11 @@ class Settings(ctx: Context) {
         get() = p.getInt("payday", 25)
         set(v) = p.edit().putInt("payday", v.coerceIn(1, 31)).apply()
 
+    /** ロック画面（通知）に残り時間を出すか */
+    var lockNotice: Boolean
+        get() = p.getBoolean("lock_notice", false)
+        set(v) = p.edit().putBoolean("lock_notice", v).apply()
+
     /** 平均余命の計算に女性の表を使うか（最後に選んだほうを覚えておく） */
     var lifeFemale: Boolean
         get() = p.getBoolean("life_female", false)

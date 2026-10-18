@@ -40,6 +40,8 @@ class CountdownWidget : AppWidgetProvider() {
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_BOOT_COMPLETED,
             ACTION_EXACT_ALARM_PERMISSION -> refreshAll(ctx)
+            // ロック画面の通知を消されたら、出す設定を切る
+            LockNotice.ACTION_DISMISSED -> Settings(ctx).lockNotice = false
         }
     }
 
@@ -51,6 +53,8 @@ class CountdownWidget : AppWidgetProvider() {
     override fun onDisabled(ctx: Context) {
         val am = ctx.getSystemService(AlarmManager::class.java)
         am?.cancel(tickIntent(ctx))
+        // ウィジェットがなくなっても、ロック画面の通知のための描き直しは続ける
+        refreshAll(ctx)
     }
 
     companion object {
@@ -91,7 +95,8 @@ class CountdownWidget : AppWidgetProvider() {
         fun refreshAll(ctx: Context) {
             val mgr = AppWidgetManager.getInstance(ctx)
             val ids = mgr.getAppWidgetIds(ComponentName(ctx, CountdownWidget::class.java))
-            if (ids.isNotEmpty()) render(ctx, mgr, ids)
+            // ウィジェットがなくても、ロック画面の通知のために動かす
+            render(ctx, mgr, ids)
         }
 
         private fun render(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
@@ -133,6 +138,11 @@ class CountdownWidget : AppWidgetProvider() {
                 mgr.updateAppWidget(wid, views)
                 nextRefresh = minOf(nextRefresh, next)
             }
+            // ウィジェットがないときは、ウィジェット用の描き直しは要らない
+            if (ids.isEmpty()) nextRefresh = Long.MAX_VALUE
+            // ロック画面の通知：固定した項目のいちばん上、なければ期日がいちばん近い項目
+            val notice = pinned.firstOrNull() ?: rest.firstOrNull()
+            nextRefresh = minOf(nextRefresh, LockNotice.update(ctx, settings.lockNotice, notice, now))
             scheduleNext(ctx, nextRefresh)
         }
 

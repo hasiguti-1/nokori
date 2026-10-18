@@ -18,6 +18,7 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import java.util.Locale
 
 /** 設定画面：字体・くり返しカウンター・週の始まり・ウィジェットに出す種類 */
@@ -195,6 +196,19 @@ class SettingsActivity : Activity() {
             exactButton = btn
         }
 
+        // ── ロック画面 ──
+        box.addView(heading("ロック画面"))
+        box.addView(note("固定した項目のいちばん上（固定がなければ期日がいちばん近い項目）を、通知として出し続けます。ロック画面の通知欄にも出ます。字体は端末の標準です。通知を消したときは、ここで入れ直してください"))
+        val lc = check("ロック画面に残り時間を出す（通知）", s.lockNotice) { on ->
+            s.lockNotice = on
+            if (on && !LockNotice.permitted(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), REQ_NOTICE)
+            }
+            CountdownWidget.refreshAll(this)
+        }
+        box.addView(lc)
+        lockCheck = lc
+
         // ── このアプリについて ──
         box.addView(heading("このアプリについて"))
         val ver = try {
@@ -217,9 +231,25 @@ class SettingsActivity : Activity() {
     private var payDay: EditText? = null
     private var exactStatus: TextView? = null
     private var exactButton: Button? = null
+    private var lockCheck: CheckBox? = null
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQ_NOTICE) return
+        if (!LockNotice.permitted(this)) {
+            s.lockNotice = false
+            lockCheck?.isChecked = false
+            Toast.makeText(this,
+                "通知が許可されていないため出せません。設定 → アプリ → 残り時間 → 通知 で許可してください",
+                Toast.LENGTH_LONG).show()
+        }
+        CountdownWidget.refreshAll(this)
+    }
 
     override fun onResume() {
         super.onResume()
+        // 通知を消すと設定が切れるので、画面に戻ったときに合わせる
+        lockCheck?.isChecked = s.lockNotice
         // 許可の画面から戻ってきたときに表示を合わせる
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val ok = getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() == true
@@ -262,6 +292,7 @@ class SettingsActivity : Activity() {
     }
 
     companion object {
+        private const val REQ_NOTICE = 1
         const val PRIVACY_URL = "https://github.com/hasiguti-1/nokori/blob/main/docs/privacy.md"
     }
 
