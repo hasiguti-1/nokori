@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.SystemClock
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import java.util.Locale
@@ -83,7 +84,9 @@ class CountdownWidget : AppWidgetProvider() {
         }
 
         private fun render(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
+            // 今の時刻と、時計部品が数える基準の時刻を同じ瞬間に取る（ずれると秒が1つずれるため）
             val now = System.currentTimeMillis()
+            val elapsedNow = SystemClock.elapsedRealtime()
             val settings = Settings(ctx)
             val all = Calc.sorted(Store.load(ctx) + Repeats.build(ctx, now), now)
                 .filter { (it.targetMillis() ?: Long.MIN_VALUE) > now }
@@ -113,11 +116,9 @@ class CountdownWidget : AppWidgetProvider() {
                 shown = (pinned + rest).take(maxOf(settings.widgetCount, pinned.size))
             }
 
-            // 秒ありは描き直すたびにレイアウトを交互に替える（全ウィジェット共通で1回だけ切り替え）
-            val secLayout = if (settings.font == FontChoice.DOT_SEC) nextSecLayout(ctx) else 0
             // ドット文字は幅に合わせて画像を描くので、ウィジェットごとに作る
             for (wid in ids) {
-                val (views, next) = build(ctx, mgr, wid, settings, shown, now, secLayout, rotRow)
+                val (views, next) = build(ctx, mgr, wid, settings, shown, now, elapsedNow, rotRow)
                 mgr.updateAppWidget(wid, views)
                 nextRefresh = minOf(nextRefresh, next)
             }
@@ -127,15 +128,12 @@ class CountdownWidget : AppWidgetProvider() {
         /** 1つのウィジェットの中身を作る。戻り値は（表示内容, 次に描き直す時刻） */
         private fun build(
             ctx: Context, mgr: AppWidgetManager, wid: Int,
-            settings: Settings, shown: List<Item>, now: Long, secLayout: Int,
+            settings: Settings, shown: List<Item>, now: Long, elapsedNow: Long,
             rotRow: Pair<Int, String>?,
         ): Pair<RemoteViews, Long> {
-            val elapsedNow = SystemClock.elapsedRealtime()
             val dot = settings.font.isImage
             val secs = settings.font == FontChoice.DOT_SEC
-            // 秒ありは2つのレイアウトを交互に使い、1秒ごとの切り替えのタイマーを毎回リセットする
-            val layout = if (secs) secLayout else settings.font.layout
-            val views = RemoteViews(ctx.packageName, layout)
+            val views = RemoteViews(ctx.packageName, settings.font.layout)
             views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
 
             // ウィジェットの幅（縦向き画面での幅＝MIN_WIDTH。左右の余白14dp×2を引く）
@@ -185,24 +183,23 @@ class CountdownWidget : AppWidgetProvider() {
                     views.setImageViewBitmap(id(ctx, "titleimg$i"),
                         DotRenderer.text(ctx, item.title, 16f, DotRenderer.TITLE, maxOf(50, titleMax)))
                     val clock = parts.clockMs
-                    val sec = clock?.let { ((it % 60_000L) / 1000L).toInt() }
-                    val num = DotRenderer.number(ctx, parts, color, secTens = if (secs) sec?.div(10) else null)
+                    // 秒ありは、画像を「時:」までにして、「分:秒」は標準の時計部品に数えさせる。
+                    // 時計部品は実際の時刻から計算するので、ほかのアプリから戻ったときもずれない
+                    val num = DotRenderer.number(ctx, parts, color, hourOnly = secs)
                     views.setImageViewBitmap(id(ctx, "numimg$i"), num.bitmap)
                     if (secs) {
-                        val oId = id(ctx, "seco$i")
-                        if (sec != null) {
-                            // 秒の1の位。切り替え部品に「9,8,…,0」の順で入れ、今の値から始める
-                            for (n in 0..9) views.setImageViewBitmap(id(ctx, "seco${i}_$n"),
-                                DotRenderer.digit(ctx, 9 - n, num.clockSp, color, num.ascent, num.descent))
-                            views.setDisplayedChild(oId, 9 - sec % 10)
-                            views.setViewVisibility(oId, View.VISIBLE)
-                            // 10の位が変わる瞬間に描き直す（止まっていた分のずれもここで戻る）
-                            nextRefresh = minOf(nextRefresh, now + left % 10_000L + 150)
+                        val cId = id(ctx, "secc$i")
+                        if (clock != null) {
+                            views.setViewVisibility(cId, View.VISIBLE)
+                            views.setChronometer(cId, elapsedNow + clock % 3_600_000L, "%s", true)
+                            views.setChronometerCountDown(cId, true)
+                            views.setTextColor(cId, color)
+                            views.setTextViewTextSize(cId, TypedValue.COMPLEX_UNIT_SP, num.clockSp)
                         } else {
-                            views.setViewVisibility(oId, View.GONE)
+                            views.setViewVisibility(cId, View.GONE)
                         }
                     }
-                    // 残りの「分」が変わる瞬間
+                    // 残りの「分」が変わる瞬間（秒ありは「時」の画像を変える時刻もこれに含まれる）
                     nextRefresh = minOf(nextRefresh, now + left % 60_000L + 200)
                 } else {
                     views.setTextViewText(id(ctx, "title$i"), item.title)
@@ -255,14 +252,6 @@ class CountdownWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.root, open)
             return views to nextRefresh
-        }
-
-        /** 秒あり用のレイアウトを交互に返す */
-        private fun nextSecLayout(ctx: Context): Int {
-            val p = ctx.getSharedPreferences("widget_state", Context.MODE_PRIVATE)
-            val flip = !p.getBoolean("sec_layout_flip", false)
-            p.edit().putBoolean("sec_layout_flip", flip).apply()
-            return if (flip) R.layout.widget_dotsec2 else R.layout.widget_dotsec
         }
 
         private fun tickIntent(ctx: Context): PendingIntent = PendingIntent.getBroadcast(

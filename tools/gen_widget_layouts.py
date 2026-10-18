@@ -217,30 +217,26 @@ def layout(font, preview=False):
 '''
 
 
-def flipper(fid, count, interval):
-    """数字画像を一定間隔で切り替える部品（秒の桁用）。中の画像はアプリが描いて入れる。"""
-    kids = "\n".join(f'''                <ImageView
-                    android:id="@+id/{fid}_{n}"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:scaleType="center" />''' for n in range(count))
-    return f'''<ViewFlipper
-                android:id="@+id/{fid}"
+def sec_chrono(cid):
+    """秒あり用の「分:秒」。Android 標準の時計部品なので、実際の時刻から数える
+    （ホーム画面に戻ったときもずれない）。文字の大きさと色はアプリから入れる。"""
+    return f'''<Chronometer
+                android:id="@+id/{cid}"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:autoStart="true"
-                android:flipInterval="{interval}"
-                android:visibility="gone">
-{kids}
-            </ViewFlipper>'''
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:textColor="#FFB23E"
+                android:textSize="18sp"
+                android:visibility="gone" />'''
 
 
 def dot_layout(secs=False):
-    """ドット文字用。文字は画像で描くので ImageView を置く。secs=True なら秒の2桁を切り替え部品で動かす。"""
+    """ドット文字用。文字は画像で描くので ImageView を置く。
+    secs=True なら「分:秒」を標準の時計部品で出す（時までは画像）。"""
     rows = []
     for i in range(ROWS):
-        # 10の位は数字画像に含めて描き直す。1の位だけ1秒ごとに切り替える
-        sec_parts = flipper(f"seco{i}", 10, 1000) if secs else ""
+        sec_parts = sec_chrono(f"secc{i}") if secs else ""
         bars = "\n".join(f'''<ProgressBar
                 android:id="@+id/bar{i}_{k}"
                 style="?android:attr/progressBarStyleHorizontal"
@@ -292,7 +288,7 @@ def dot_layout(secs=False):
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:gravity="end"
+            android:gravity="end|bottom"
             android:orientation="horizontal">
             <ImageView
                 android:id="@+id/numimg{i}"
@@ -351,12 +347,11 @@ if __name__ == "__main__":
     for name, fam in FONTS.items():
         (RES / f"layout/widget_{name}.xml").write_text(layout(fam), encoding="utf-8")
     (RES / "layout/widget_dot.xml").write_text(dot_layout(), encoding="utf-8")
-    # 秒あり用は同じ中身を2つ作り、描き直すたびに交互に使う
-    # （同じレイアウトだとホーム画面が部品を使い回し、切り替えのタイマーがリセットされないため）
     (RES / "layout/widget_dotsec.xml").write_text(dot_layout(secs=True), encoding="utf-8")
-    (RES / "layout/widget_dotsec2.xml").write_text(dot_layout(secs=True), encoding="utf-8")
     (RES / "layout/widget_preview.xml").write_text(layout("monospace", preview=True), encoding="utf-8")
-    old = RES / "layout/widget.xml"
-    if old.exists():
-        old.unlink()
+    # 使わなくなったレイアウト（widget.xml は初期の版、widget_dotsec2.xml は秒の切り替え部品の頃のもの）
+    for old_name in ("widget.xml", "widget_dotsec2.xml"):
+        old = RES / "layout" / old_name
+        if old.exists():
+            old.unlink()
     print("generated:", sorted(p.name for p in (RES / "layout").glob("widget_*.xml")))

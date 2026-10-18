@@ -64,25 +64,34 @@ object DotRenderer {
         return bmp
     }
 
-    /** 数字画像と、秒の桁画像をそろえるための情報 */
-    data class Number(val bitmap: Bitmap, val clockSp: Float, val ascent: Int, val descent: Int)
+    /** 数字画像と、後ろに並べる「分:秒」の文字の大きさ */
+    data class Number(val bitmap: Bitmap, val clockSp: Float)
+
+    /** 時計の字の大きさ（時:分だけのとき＝「今日」などは大きい数字と同じ大きさに） */
+    fun clockSp(parts: LeftParts): Float = if (parts.big == null) 26f else 18f
 
     /**
      * 残りの数字。大きい数字＋単位（小さく灰色）＋時:分 を下揃えで並べる。
-     * secTens があれば末尾に「:」と秒の10の位を付ける（後ろに秒の1の位が並ぶ）
+     * hourOnly のときは時計を「時:」までにする（後ろに標準の時計部品で「分:秒」が並ぶ）。
+     * そのときは画像の下の余白を等幅の字体にそろえ、横に並べたときに文字の下端が合うようにする
      */
-    fun number(ctx: Context, parts: LeftParts, color: Int, secTens: Int? = null): Number {
+    fun number(ctx: Context, parts: LeftParts, color: Int, hourOnly: Boolean = false): Number {
         data class Seg(val s: String, val paint: TextPaint, val gapAfter: Float)
         val segs = mutableListOf<Seg>()
-        // 時:分だけのとき（「今日」など）は大きい数字と同じ大きさに
-        val clockSp = if (parts.big == null) 26f else 18f
+        val clockSp = clockSp(parts)
         parts.big?.let { segs += Seg(it, paint(ctx, 26f, color), dp(ctx, 3f)) }
         parts.unit?.let { if (parts.big != null) segs += Seg(it, paint(ctx, 12f, MUTED), dp(ctx, 8f)) }
-        parts.clockMs?.let { segs += Seg(hm(it) + (secTens?.let { t -> ":$t" } ?: ""), paint(ctx, clockSp, color), 0f) }
+        parts.clockMs?.let {
+            val s = if (hourOnly) "${it / 3_600_000}:" else hm(it)
+            segs += Seg(s, paint(ctx, clockSp, color), 0f)
+        }
         if (segs.isEmpty()) segs += Seg("-", paint(ctx, 18f, color), 0f)
 
         val ascent = segs.maxOf { -it.paint.fontMetricsInt.ascent }
-        val descent = segs.maxOf { it.paint.fontMetricsInt.descent }
+        val descent = if (hourOnly && parts.clockMs != null) {
+            // 標準の等幅字体の、文字の下端から行の下までの高さ
+            TextPaint().apply { typeface = Typeface.MONOSPACE; textSize = px(ctx, clockSp) }.fontMetricsInt.descent
+        } else segs.maxOf { it.paint.fontMetricsInt.descent }
         val width = segs.sumOf { (it.paint.measureText(it.s) + it.gapAfter).toDouble() }
         val bmp = blank(ctx, Math.ceil(width).toInt(), ascent + descent)
         val c = Canvas(bmp)
@@ -91,18 +100,7 @@ object DotRenderer {
             c.drawText(seg.s, x, ascent.toFloat(), seg.paint)
             x += seg.paint.measureText(seg.s) + seg.gapAfter
         }
-        return Number(bmp, clockSp, ascent, descent)
-    }
-
-    /** 秒の1桁。数字画像と同じ高さ・同じ下揃えで描く（横に並べたときにずれないように） */
-    fun digit(ctx: Context, d: Int, sp: Float, color: Int, ascent: Int, descent: Int): Bitmap {
-        val p = paint(ctx, sp, color)
-        val s = d.toString()
-        // 数字ごとに幅が違うと揺れるので、一番広い数字の幅にそろえる
-        val w = Math.ceil((0..9).maxOf { p.measureText(it.toString()) }.toDouble()).toInt()
-        val bmp = blank(ctx, w, ascent + descent)
-        Canvas(bmp).drawText(s, (w - p.measureText(s)) / 2f, ascent.toFloat(), p)
-        return bmp
+        return Number(bmp, clockSp)
     }
 
     /** ミリ秒を「時:分」に（秒は切り捨て） */
