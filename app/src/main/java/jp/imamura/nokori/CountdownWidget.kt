@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.SystemClock
 import android.util.TypedValue
@@ -57,9 +58,13 @@ class CountdownWidget : AppWidgetProvider() {
         /** 「時刻ぴったりの更新」の許可が変わったとき（Android 12 以降） */
         private const val ACTION_EXACT_ALARM_PERMISSION =
             "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
-        /** 行ごとの部品のID（レイアウトは tools/gen_widget_layouts.py で生成） */
+        /** 行ごとの部品のID（レイアウトは tools/gen_widget_layouts.py で生成）。
+         *  検証用の別アプリID（jp.imamura.nokori.exp）でも見つかるように、
+         *  R の場所（jp.imamura.nokori）で引き、なければアプリIDで引く（普段の版では両者は同じ） */
+        private val RES_PKG = R::class.java.name.substringBeforeLast('.')
         private fun id(ctx: Context, name: String): Int =
-            ctx.resources.getIdentifier(name, "id", ctx.packageName)
+            ctx.resources.getIdentifier(name, "id", RES_PKG).takeIf { it != 0 }
+                ?: ctx.resources.getIdentifier(name, "id", ctx.packageName)
 
         /** 種類ラベルの背景と文字色 */
         private fun chipBg(k: Kind) = when (k) {
@@ -137,9 +142,14 @@ class CountdownWidget : AppWidgetProvider() {
             settings: Settings, shown: List<Item>, now: Long, elapsedNow: Long,
             rotRow: Pair<Int, String>?,
         ): Pair<RemoteViews, Long> {
-            val dot = settings.font.isImage
-            val secs = settings.font == FontChoice.DOT_SEC
-            val views = RemoteViews(ctx.packageName, settings.font.layout)
+            val font = settings.font
+            val dot = font.isImage
+            // 試作B（秒の回転盤）は Android 12 以上だけ。それより前は「秒あり・時刻は等幅」で出す
+            val ring = font == FontChoice.DOT_RING && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            val ringFallback = font == FontChoice.DOT_RING && !ring
+            // 試作A は「秒あり・時刻は等幅」と同じ処理で、レイアウトの字体指定だけが違う
+            val secs = font == FontChoice.DOT_SEC || font == FontChoice.DOT_XMLFONT || ringFallback
+            val views = RemoteViews(ctx.packageName, if (ringFallback) R.layout.widget_dotsec else font.layout)
             views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
 
             // ウィジェットの幅（縦向き画面での幅＝MIN_WIDTH。左右の余白14dp×2を引く）
@@ -192,7 +202,7 @@ class CountdownWidget : AppWidgetProvider() {
                     // 秒ありは、画像を「◯日」までにして、「時:分:秒」は標準の時計部品に数えさせる。
                     // 時計部品は端末の経過時間から計算するので、ほかのアプリから戻ったときもずれない。
                     // 「時」まで時計部品に任せるので、描き直しが遅れても時の境目で表示が乱れない
-                    val num = DotRenderer.number(ctx, parts, color, clockByChrono = secs)
+                    val num = DotRenderer.number(ctx, parts, color, clockByChrono = secs, ringSeconds = ring)
                     val numId = id(ctx, "numimg$i")
                     if (num.bitmap != null) {
                         views.setImageViewBitmap(numId, num.bitmap)
@@ -212,6 +222,28 @@ class CountdownWidget : AppWidgetProvider() {
                             views.setViewVisibility(cId, View.GONE)
                         }
                         // 秒ありの描き直しは、見出しの時刻（毎分）と日数の変わり目（下で設定）だけ
+                    } else if (ring) {
+                        // 試作B：秒は回転盤（AnalogClock）が時刻から毎秒計算する。
+                        // 「時:分:」の画像は、残りの分が変わる瞬間に描き直す
+                        val big = num.clockSp > 20f
+                        for ((tag, isBig) in listOf("a" to false, "b" to true)) {
+                            val winId = id(ctx, "ringw$tag$i")
+                            if (clock == null || isBig != big) {
+                                views.setViewVisibility(winId, View.GONE)
+                                continue
+                            }
+                            val cId = id(ctx, "ring$tag$i")
+                            val res = when {
+                                color == URGENT && isBig -> R.drawable.dotring_red_26
+                                color == URGENT -> R.drawable.dotring_red_18
+                                isBig -> R.drawable.dotring_amber_26
+                                else -> R.drawable.dotring_amber_18
+                            }
+                            views.setViewVisibility(winId, View.VISIBLE)
+                            views.setIcon(cId, "setSecondHand", Icon.createWithResource(ctx, res))
+                            views.setString(cId, "setTimeZone", RingSeconds.zone(target))
+                        }
+                        if (clock != null) nextRefresh = minOf(nextRefresh, now + left % 60_000L + 30)
                     } else {
                         // 秒なしは画像の「時:分」を変える
                         nextRefresh = minOf(nextRefresh, now + left % 60_000L + 200)

@@ -73,16 +73,24 @@ object DotRenderer {
     /**
      * 残りの数字。大きい数字＋単位（小さく灰色）＋時:分 を下揃えで並べる。
      * clockByChrono のときは時計を画像に入れない（後ろに標準の時計部品で「時:分:秒」が並ぶ）。
-     * そのときは画像の下の余白を等幅の字体にそろえ、横に並べたときに文字の下端が合うようにする
+     * そのときは画像の下の余白を等幅の字体にそろえ、横に並べたときに文字の下端が合うようにする。
+     * ringSeconds（試作B）のときは時計を「時:分:」までにする（後ろに秒の回転盤が並ぶ）。
+     * 画像の下の余白は時計の大きさのドット文字にそろえ、回転盤の数字と下端を合わせる
      */
-    fun number(ctx: Context, parts: LeftParts, color: Int, clockByChrono: Boolean = false): Number {
+    fun number(
+        ctx: Context, parts: LeftParts, color: Int,
+        clockByChrono: Boolean = false, ringSeconds: Boolean = false,
+    ): Number {
         data class Seg(val s: String, val paint: TextPaint, val gapAfter: Float)
         val segs = mutableListOf<Seg>()
         val clockSp = clockSp(parts)
         val chrono = clockByChrono && parts.clockMs != null
         parts.big?.let { segs += Seg(it, paint(ctx, 26f, color), dp(ctx, 3f)) }
         parts.unit?.let { if (parts.big != null) segs += Seg(it, paint(ctx, 12f, MUTED), dp(ctx, 8f)) }
-        if (!chrono) parts.clockMs?.let { segs += Seg(hm(it), paint(ctx, clockSp, color), 0f) }
+        val ring = ringSeconds && parts.clockMs != null
+        if (!chrono) parts.clockMs?.let {
+            segs += Seg(if (ring) hm(it) + ":" else hm(it), paint(ctx, clockSp, color), 0f)
+        }
         if (segs.isEmpty()) {
             if (chrono) return Number(null, clockSp) // 時計だけの行は画像なし
             segs += Seg("-", paint(ctx, 18f, color), 0f)
@@ -92,6 +100,8 @@ object DotRenderer {
         val descent = if (chrono) {
             // 標準の等幅字体の、文字の下端から行の下までの高さ
             TextPaint().apply { typeface = Typeface.MONOSPACE; textSize = px(ctx, clockSp) }.fontMetricsInt.descent
+        } else if (ring) {
+            paint(ctx, clockSp, color).fontMetricsInt.descent
         } else segs.maxOf { it.paint.fontMetricsInt.descent }
         val width = segs.sumOf { (it.paint.measureText(it.s) + it.gapAfter).toDouble() }
         val bmp = blank(ctx, Math.ceil(width).toInt(), ascent + descent)

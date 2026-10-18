@@ -45,7 +45,8 @@ class SettingsActivity : Activity() {
                 id = 1000 + i
                 text = when (f) {
                     FontChoice.DOT -> "${f.label}　33日 8:12"
-                    FontChoice.DOT_SEC -> "${f.label}　33日 8:12:44"
+                    FontChoice.DOT_SEC, FontChoice.DOT_XMLFONT, FontChoice.DOT_RING ->
+                        "${f.label}　33日 8:12:44"
                     else -> "${f.label}　33日 08:12:44"
                 }
                 typeface = if (f.isImage) resources.getFont(R.font.dotgothic16)

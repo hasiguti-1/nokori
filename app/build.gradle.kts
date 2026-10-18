@@ -14,6 +14,12 @@ android {
         // GitHub Actions の実行番号をバージョンにする（上書きインストールできるように）
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        // 検証用ビルド（.github/workflows/build-exp.yml）は別のアプリIDにして、
+        // 普段使いの版（jp.imamura.nokori）と並べて入れられるようにする（データも別）
+        if (System.getenv("NOKORI_EXP") == "1") {
+            applicationIdSuffix = ".exp"
+            versionName = "exp." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        }
     }
 
     signingConfigs {

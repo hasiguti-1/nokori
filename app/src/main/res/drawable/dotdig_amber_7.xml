@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- tools/gen_dot_ring.py で生成。直接編集しない -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="9sp"
+    android:height="26.064sp"
+    android:viewportWidth="500"
+    android:viewportHeight="1448">
+    <path android:fillColor="#FFB23E" android:pathData="M153 991H214V805H276V620H338V496H400V445H28V373H472V507H410V631H349V816H287V1001H225V1188H153Z" />
+</vector>

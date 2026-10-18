@@ -1,0 +1,88 @@
+name: 検証用アプリを作る
+
+# exp/ で始まるブランチに送ったときだけ動く。普段使いの版（main の「アプリを作る」）とは別。
+# - アプリIDは jp.imamura.nokori.exp（普段の版と並べて入れられる。データも別）
+# - 名前は「残り時間（試作）」
+# - リリースは「プレリリース」にし、「最新」にはしない（Obtainium が普段の版と取り違えないように）
+on:
+  push:
+    branches: ["exp/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NOKORI_EXP: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK の場所を確認
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties && ls "$ANDROID_HOME"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: 署名鍵を復号
+        env:
+          NOKORI_KEY_PASSWORD: ${{ secrets.NOKORI_KEY_PASSWORD }}
+        run: |
+          if [ -z "$NOKORI_KEY_PASSWORD" ]; then
+            echo "::error::Secrets に NOKORI_KEY_PASSWORD が登録されていません"
+            exit 1
+          fi
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/nokori.jks.enc -out app/nokori.jks -pass env:NOKORI_KEY_PASSWORD
+
+      - name: 画面に出る名前を「試作」にする
+        run: |
+          sed -i 's|<string name="app_name">残り時間</string>|<string name="app_name">残り時間（試作）</string>|' app/src/main/res/values/strings.xml
+          sed -i 's|<string name="widget_name">残り時間（近い順3件）</string>|<string name="widget_name">残り時間（試作）</string>|' app/src/main/res/values/strings.xml
+          grep -q "残り時間（試作）</string>" app/src/main/res/values/strings.xml
+
+      - name: 生成したレイアウトと絵が、生成スクリプトの結果と一致するか確認
+        run: |
+          pip install fonttools
+          python3 tools/gen_dot_ring.py
+          python3 tools/gen_widget_layouts.py
+          git diff --stat --exit-code -- app/src/main/res/layout app/src/main/res/drawable \
+            || echo "::warning::生成し直した結果がリポジトリの内容と違います（fontTools の版の違いの可能性）"
+          git checkout -- app/src/main/res/layout app/src/main/res/drawable
+
+      - name: 単体テスト
+        run: |
+          gradle testReleaseUnitTest --no-daemon --stacktrace
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          t = f = e = s = 0
+          for x in glob.glob("app/build/test-results/testReleaseUnitTest/*.xml"):
+              r = ET.parse(x).getroot()
+              t += int(r.get("tests")); f += int(r.get("failures")); e += int(r.get("errors")); s += int(r.get("skipped"))
+          print(f"::notice title=単体テスト::{t}件実行、失敗{f}、エラー{e}、スキップ{s}")
+          PY
+
+      - name: ビルド
+        env:
+          NOKORI_KEY_PASSWORD: ${{ secrets.NOKORI_KEY_PASSWORD }}
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: ファイル名をそろえる
+        run: cp app/build/outputs/apk/release/app-release.apk nokori-exp.apk
+
+      - name: プレリリースに置く（普段の版の更新には出てこない）
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: exp-${{ github.run_number }}
+          name: 検証用 exp.${{ github.run_number }}（${{ github.ref_name }}）
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          files: nokori-exp.apk

@@ -18,10 +18,14 @@ enum class FontChoice(val label: String, val family: String, val layout: Int) {
     /** 文字を画像で描く。秒は出さず1分ごとに更新 */
     DOT("ドット文字（秒なし）", "", R.layout.widget_dot),
     /** 「◯日」まではドット文字の画像、「時:分:秒」は標準の時計部品（等幅）で、端末の経過時間から数える */
-    DOT_SEC("ドット文字（秒あり・時刻は等幅）", "", R.layout.widget_dotsec);
+    DOT_SEC("ドット文字（秒あり・時刻は等幅）", "", R.layout.widget_dotsec),
+    /** 検証用ブランチの試作A：DOT_SEC と同じで、時計部品にアプリ同梱のドット字体を XML で直接指定 */
+    DOT_XMLFONT("試作A：時計の字体をXMLでドット指定", "", R.layout.widget_dotxml),
+    /** 検証用ブランチの試作B：「◯日 時:分:」は画像、秒はドット文字の回転盤（Android 12 以上） */
+    DOT_RING("試作B：秒もドット文字（回転盤）", "", R.layout.widget_dotring);
 
     /** 文字を画像で描く字体か */
-    val isImage: Boolean get() = this == DOT || this == DOT_SEC
+    val isImage: Boolean get() = this == DOT || this == DOT_SEC || this == DOT_XMLFONT || this == DOT_RING
 
     companion object {
         fun from(name: String?) = values().firstOrNull { it.name == name } ?: MONO
