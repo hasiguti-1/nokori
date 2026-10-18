@@ -33,6 +33,25 @@ enum class FontChoice(val label: String, val family: String, val layout: Int) {
     }
 }
 
+/**
+ * 「固定＋切り替え」で項目が入れ替わるときの動き。
+ * ウィジェットでは Android のめくり部品（ViewFlipper）に動きを付けて切り替える（layout は動きごとの部品）。
+ * ライブ壁紙ではアプリが自分で描く（パタパタは1文字ずつめくれる）。
+ */
+enum class RotateAnim(val label: String, val layout: Int) {
+    NONE("なし（パッと切り替わる）", 0),
+    SLIDE_UP("縦スライド（下から上へ・発車標風）", R.layout.flip_slide_up),
+    SLIDE_LEFT("横スライド（右から左へ）", R.layout.flip_slide_left),
+    SLIDE_RIGHT("横スライド（左から右へ）", R.layout.flip_slide_right),
+    FLAP("パタパタ（つぶれて開く）", R.layout.flip_flap),
+    FADE("フェード", R.layout.flip_fade),
+    ZOOM("ズーム", R.layout.flip_zoom);
+
+    companion object {
+        fun from(name: String?) = values().firstOrNull { it.name == name } ?: NONE
+    }
+}
+
 /** 設定（端末内に保存） */
 class Settings(ctx: Context) {
     private val p = ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -131,6 +150,16 @@ class Settings(ctx: Context) {
     var rotateSec: Int
         get() = p.getInt("rotate_sec", 10).let { if (it in ROTATE_CHOICES) it else 10 }
         set(v) = p.edit().putInt("rotate_sec", v).apply()
+
+    /** 切り替えの動き（ウィジェットとライブ壁紙の両方） */
+    var rotateAnim: RotateAnim
+        get() = RotateAnim.from(p.getString("rotate_anim", null))
+        set(v) = p.edit().putString("rotate_anim", v.name).apply()
+
+    /** ライブ壁紙で、入りきらない名前を電光掲示板のように流すか */
+    var wallMarquee: Boolean
+        get() = p.getBoolean("wall_marquee", false)
+        set(v) = p.edit().putBoolean("wall_marquee", v).apply()
 
     companion object {
         const val MAX_ROWS = 6

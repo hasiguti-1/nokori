@@ -22,6 +22,7 @@ import java.util.Locale
  * ライブ壁紙「残り時間ボード」。ウィジェットと同じボードを、壁紙として画面の下半分に描く。
  * 壁紙はアプリ自身が描くので、ドット文字を秒まで使える。
  * 画面が見えている間だけ、秒の切り替わりに合わせて1秒ごとに描き直す（見えない間は止まる）。
+ * 「固定＋切り替え」の動きや、名前を流す表示の間だけは、なめらかに描き直す。
  * 残りは毎回「目標日時 - 今の時刻」から計算するので、止まっていた時間があってもずれない。
  * ロック画面にも同じ壁紙が使われる機種なら、ロック画面にもボードが出る。
  */
@@ -40,6 +41,15 @@ class BoardWallpaper : WallpaperService() {
         private val PANEL = 0xE60B1020.toInt()
         private val LINE = 0xFF24304A.toInt()
         private val PLAIN_BG = 0xFF0A1122.toInt()
+
+        /** 切り替えの動きの長さ（パタパタ以外） */
+        private const val ANIM_MS = 450L
+        /** パタパタ：列の幅、列ごとの遅れ、1列がめくれる時間 */
+        private const val FLAP_CELL_DP = 12f
+        private const val FLAP_STAGGER = 14f
+        private const val FLAP_FLIP = 220f
+        /** 電光掲示板の流れる速さ（dp/秒） */
+        private const val MARQUEE_DP_PER_SEC = 40f
 
         /** 種類ラベルの（背景, 文字）色、進み具合バーの色（ウィジェットと同じ） */
         private fun chipColors(k: Kind) = when (k) {
@@ -67,7 +77,13 @@ class BoardWallpaper : WallpaperService() {
         private var width = 0
         private var height = 0
 
-        private var items: List<Item> = emptyList()
+        /** いつも出す行（固定＋近い順。切り替えのときは固定だけ） */
+        private var staticItems: List<Item> = emptyList()
+        /** 「固定＋切り替え」で順に出す項目（切り替えないときは空） */
+        private var rotItems: List<Item> = emptyList()
+        private var periodMs = 10_000L
+        private var anim = RotateAnim.NONE
+        private var marquee = false
         private var itemsLoadedAt = 0L
 
         private var bg: Bitmap? = null
@@ -78,12 +94,8 @@ class BoardWallpaper : WallpaperService() {
 
         private val tick = object : Runnable {
             override fun run() {
-                draw()
-                if (visible) {
-                    // 次の秒の切り替わりの少しあと（期日は秒ちょうどなので、残りの秒もそこで変わる）
-                    val now = System.currentTimeMillis()
-                    handler.postDelayed(this, 1000 - now % 1000 + 15)
-                }
+                val delay = draw()
+                if (visible) handler.postDelayed(this, delay)
             }
         }
 
@@ -91,7 +103,7 @@ class BoardWallpaper : WallpaperService() {
             visible = v
             handler.removeCallbacks(tick)
             if (v) {
-                itemsLoadedAt = 0L // 見え始めたら項目を読み直す（アプリで変えた内容を反映）
+                itemsLoadedAt = 0L // 見え始めたら項目と設定を読み直す（アプリで変えた内容を反映）
                 tick.run()
             }
         }
@@ -122,7 +134,9 @@ class BoardWallpaper : WallpaperService() {
             typeface = dot; textSize = sp(size); this.color = color
         }
 
-        /** 出す項目：ウィジェットと同じく、固定した項目＋近い順（件数はウィジェットの設定） */
+        private fun lineH(p: Paint) = p.fontMetrics.let { it.descent - it.ascent }
+
+        /** 出す項目：ウィジェットと同じく、固定した項目＋近い順（件数・切り替えはウィジェットの設定） */
         private fun loadItems(now: Long) {
             if (now - itemsLoadedAt < 60_000L) return
             val s = Settings(this@BoardWallpaper)
@@ -131,7 +145,16 @@ class BoardWallpaper : WallpaperService() {
             val pinned = s.pinned.mapNotNull { pid -> all.firstOrNull { it.id == pid } }.take(Settings.MAX_PINNED)
             val ids = pinned.map { it.id }.toSet()
             val rest = all.filter { it.id !in ids }.filter { it.showInWidget && s.widgetShows(it.kind) }
-            items = (pinned + rest).take(maxOf(s.widgetCount, pinned.size))
+            if (s.rotate && rest.isNotEmpty()) {
+                staticItems = pinned
+                rotItems = rest
+            } else {
+                staticItems = (pinned + rest).take(maxOf(s.widgetCount, pinned.size))
+                rotItems = emptyList()
+            }
+            periodMs = s.rotateSec * 1000L
+            anim = s.rotateAnim
+            marquee = s.wallMarquee
             itemsLoadedAt = now
         }
 
@@ -161,19 +184,22 @@ class BoardWallpaper : WallpaperService() {
             }
         }
 
-        private fun draw() {
+        /** 1回描く。戻り値は次に描くまでの時間（ミリ秒） */
+        private fun draw(): Long {
             val holder = surfaceHolder
-            if (width == 0 || height == 0) return
+            if (width == 0 || height == 0) return 1000L
             val now = System.currentTimeMillis()
             loadItems(now)
             loadBg()
-            val c: Canvas = try { holder.lockCanvas() } catch (e: Exception) { null } ?: return
+            val c: Canvas = try { holder.lockCanvas() } catch (e: Exception) { null } ?: return 1000L
+            var delay = 1000L
             try {
                 drawBackground(c)
-                drawBoard(c, now)
+                delay = drawBoard(c, now)
             } finally {
                 try { holder.unlockCanvasAndPost(c) } catch (e: Exception) { }
             }
+            return delay
         }
 
         /** 背景：写真を画面いっぱいに（はみ出す部分は切る）。写真がなければ濃紺 */
@@ -191,31 +217,34 @@ class BoardWallpaper : WallpaperService() {
             c.drawBitmap(b, null, RectF(left, top, left + w, top + h), Paint(Paint.FILTER_BITMAP_FLAG))
         }
 
-        /** ボード：画面の下半分に、ウィジェットと同じ並びで描く */
-        private fun drawBoard(c: Canvas, now: Long) {
-            val margin = dp(16f)
-            val padX = dp(14f)
-            val padY = dp(10f)
-            val panelLeft = margin
-            val panelRight = width - margin
-            val innerLeft = panelLeft + padX
-            val innerRight = panelRight - padX
+        // ── 寸法（毎回同じ） ──
+        private val margin get() = dp(16f)
+        private val padX get() = dp(14f)
+        private val padY get() = dp(10f)
+        private val panelLeft get() = margin
+        private val panelRight get() = width - margin
+        private val innerLeft get() = panelLeft + padX
+        private val innerRight get() = panelRight - padX
 
-            val header = text(11f, MUTED).apply { letterSpacing = 0.08f }
-            val titleP = text(16f, TITLE)
-            val chipP = text(11f, 0)
-            val bigP = text(26f, AMBER)
-            val unitP = text(12f, MUTED)
+        private val header by lazy { text(11f, MUTED).apply { letterSpacing = 0.08f } }
+        private val titleP by lazy { text(16f, TITLE) }
+        private val chipP by lazy { text(11f, 0) }
+        private val bigP by lazy { text(26f, AMBER) }
+        private val unitP by lazy { text(12f, MUTED) }
+        private val posP by lazy { text(11f, MUTED) }
 
-            fun lineH(p: Paint) = p.fontMetrics.let { it.descent - it.ascent }
+        /** 1行の高さ（上の余白8dpを含む） */
+        private fun rowH() = dp(8f) + maxOf(lineH(titleP), lineH(chipP) + dp(2f)) + dp(2f) +
+            lineH(bigP) + dp(4f) + dp(3f)
 
-            // 先に高さを計算してから、パネルを描く
-            val rows = items.mapNotNull { item -> Calc.parts(item, now)?.let { item to it } }
-            val rowH = dp(8f) + maxOf(lineH(titleP), lineH(chipP) + dp(2f)) + dp(2f) +
-                lineH(bigP) + dp(4f) + dp(3f)
+        /** ボード：画面の下半分に、ウィジェットと同じ並びで描く。戻り値は次に描くまでの時間 */
+        private fun drawBoard(c: Canvas, now: Long): Long {
+            val rot = rotItems.isNotEmpty()
+            val rowCount = staticItems.size + (if (rot) 1 else 0)
+            val rh = rowH()
             val headerH = lineH(header) + dp(5f) + dp(1f)
-            val emptyH = if (rows.isEmpty()) dp(8f) + lineH(text(13f, MUTED)) else 0f
-            val panelH = padY * 2 + headerH + rows.size * rowH + emptyH
+            val emptyH = if (rowCount == 0) dp(8f) + lineH(text(13f, MUTED)) else 0f
+            val panelH = padY * 2 + headerH + rowCount * rh + emptyH
             // 上はロック画面の時計を避けて画面の42%から。下にはみ出す場合は上へずらす
             val bottomLimit = height - dp(72f)
             var top = height * 0.42f
@@ -236,62 +265,182 @@ class BoardWallpaper : WallpaperService() {
             c.drawRect(innerLeft, y, innerRight, y + dp(1f), fill)
             y += dp(1f)
 
-            if (rows.isEmpty()) {
+            // 次に描くまで：ふだんは次の秒の切り替わりの少しあと（期日は秒ちょうどなので、残りの秒もそこで変わる）
+            var delay = 1000 - now % 1000 + 15
+            if (rowCount == 0) {
                 val p = text(13f, MUTED)
-                y += dp(8f)
-                c.drawText("アプリで発売日や締切を登録してください", innerLeft, y - p.fontMetrics.ascent, p)
-                return
+                c.drawText("アプリで発売日や締切を登録してください", innerLeft, y + dp(8f) - p.fontMetrics.ascent, p)
+                return delay
             }
 
-            for ((item, parts) in rows) {
-                y += dp(8f)
-                val target = item.targetMillis()!!
-                val left = target - now
-                val color = if (item.kind == Kind.DEADLINE && left < 7 * Calc.DAY_MS) URGENT else AMBER
-
-                // 1行目：種類ラベル＋名前
-                val (chipBg, chipFg) = chipColors(item.kind)
-                chipP.color = chipFg
-                val chipW = chipP.measureText(item.kind.label) + dp(12f)
-                val chipH = lineH(chipP) + dp(2f)
-                val line1H = maxOf(lineH(titleP), chipH)
-                val chipTop = y + (line1H - chipH) / 2
-                fill.color = chipBg
-                c.drawRoundRect(RectF(innerLeft, chipTop, innerLeft + chipW, chipTop + chipH), dp(4f), dp(4f), fill)
-                c.drawText(item.kind.label, innerLeft + dp(6f), chipTop + dp(1f) - chipP.fontMetrics.ascent, chipP)
-                val titleLeft = innerLeft + chipW + dp(8f)
-                val shown = TextUtils.ellipsize(item.title, titleP, innerRight - titleLeft, TextUtils.TruncateAt.END).toString()
-                c.drawText(shown, titleLeft, y + (line1H - lineH(titleP)) / 2 - titleP.fontMetrics.ascent, titleP)
-                y += line1H + dp(2f)
-
-                // 2行目：大きい数字＋単位＋時:分:秒（右寄せ、下揃え）
-                bigP.color = color
-                val clockP = text(DotRenderer.clockSp(parts), color)
-                val segs = mutableListOf<Triple<String, Paint, Float>>()
-                parts.big?.let { segs += Triple(it, bigP, dp(3f)) }
-                parts.unit?.let { if (parts.big != null) segs += Triple(it, unitP, dp(8f)) }
-                parts.clockMs?.let { segs += Triple(Calc.hms(it), clockP, 0f) }
-                if (segs.isEmpty()) segs += Triple("-", clockP, 0f)
-                val baseline = y - bigP.fontMetrics.ascent
-                var x = innerRight - segs.sumOf { (s, p, g) -> (p.measureText(s) + g).toDouble() }.toFloat()
-                for ((s, p, g) in segs) {
-                    c.drawText(s, x, baseline, p)
-                    x += p.measureText(s) + g
-                }
-                y += lineH(bigP) + dp(4f)
-
-                // 進み具合バー
-                val start = item.startMillis()
-                if (start != null && target > start) {
-                    val ratio = ((now - start).toFloat() / (target - start)).coerceIn(0f, 1f)
-                    fill.color = LINE
-                    c.drawRoundRect(RectF(innerLeft, y, innerRight, y + dp(3f)), dp(2f), dp(2f), fill)
-                    fill.color = barColor(item.kind)
-                    c.drawRoundRect(RectF(innerLeft, y, innerLeft + (innerRight - innerLeft) * ratio, y + dp(3f)),
-                        dp(2f), dp(2f), fill)
-                }
-                y += dp(3f)
+            var moving = false
+            for (item in staticItems) {
+                if (drawRow(c, item, now, y, null)) moving = true
+                y += rh
             }
+            if (rot) {
+                val n = rotItems.size
+                val idx = RotateMath.index(now, periodMs, n)
+                val cur = rotItems[idx]
+                val curPos = if (n > 1) "${idx + 1}/$n" else null
+                val cells = maxOf(1, Math.ceil(((panelRight - panelLeft) / dp(FLAP_CELL_DP)).toDouble()).toInt())
+                val dur = if (anim == RotateAnim.FLAP) RotateMath.flapDuration(cells, FLAP_STAGGER, FLAP_FLIP) else ANIM_MS
+                val p = if (anim != RotateAnim.NONE && n > 1) RotateMath.progress(now, periodMs, dur) else null
+                if (p == null) {
+                    if (drawRow(c, cur, now, y, curPos)) moving = true
+                } else {
+                    val pi = RotateMath.prevIndex(now, periodMs, n)
+                    val old = rotItems[pi]
+                    val oldPos = "${pi + 1}/$n"
+                    drawTransition(c, now, y, rh, old, oldPos, cur, curPos, p, cells, RotateMath.elapsed(now, periodMs))
+                    // 動きの最中はなめらかに（約60回/秒）
+                    return 16L
+                }
+                // 次の切り替えの始まりに合わせて描く
+                if (n > 1) delay = minOf(delay, RotateMath.untilNext(now, periodMs) + 5)
+            }
+            // 名前が流れているときは約30回/秒
+            if (moving) delay = minOf(delay, 33L)
+            return delay
+        }
+
+        /** 切り替えの動き（古い行 → 新しい行）。行の範囲の外には描かない */
+        private fun drawTransition(
+            c: Canvas, now: Long, top: Float, rh: Float,
+            old: Item, oldPos: String, cur: Item, curPos: String?, p: Float, cells: Int, elapsedMs: Long,
+        ) {
+            val rect = RectF(panelLeft, top, panelRight, top + rh)
+            val w = rect.width()
+            val ease = 1f - (1f - p) * (1f - p) // 終わりに向けてゆっくり
+            c.save()
+            c.clipRect(rect)
+            when (anim) {
+                RotateAnim.SLIDE_UP -> {
+                    c.save(); c.translate(0f, -ease * rh); drawRow(c, old, now, top, oldPos); c.restore()
+                    c.save(); c.translate(0f, (1f - ease) * rh); drawRow(c, cur, now, top, curPos); c.restore()
+                }
+                RotateAnim.SLIDE_LEFT -> {
+                    c.save(); c.translate(-ease * w, 0f); drawRow(c, old, now, top, oldPos); c.restore()
+                    c.save(); c.translate((1f - ease) * w, 0f); drawRow(c, cur, now, top, curPos); c.restore()
+                }
+                RotateAnim.SLIDE_RIGHT -> {
+                    c.save(); c.translate(ease * w, 0f); drawRow(c, old, now, top, oldPos); c.restore()
+                    c.save(); c.translate(-(1f - ease) * w, 0f); drawRow(c, cur, now, top, curPos); c.restore()
+                }
+                RotateAnim.FADE -> {
+                    c.saveLayerAlpha(rect, ((1f - p) * 255).toInt()); drawRow(c, old, now, top, oldPos); c.restore()
+                    c.saveLayerAlpha(rect, (p * 255).toInt()); drawRow(c, cur, now, top, curPos); c.restore()
+                }
+                RotateAnim.ZOOM -> {
+                    val cx = rect.centerX(); val cy = rect.centerY()
+                    c.saveLayerAlpha(rect, ((1f - p) * 255).toInt())
+                    c.scale(1f + 0.2f * p, 1f + 0.2f * p, cx, cy); drawRow(c, old, now, top, oldPos); c.restore()
+                    c.saveLayerAlpha(rect, (p * 255).toInt())
+                    c.scale(0.6f + 0.4f * ease, 0.6f + 0.4f * ease, cx, cy); drawRow(c, cur, now, top, curPos); c.restore()
+                }
+                RotateAnim.FLAP -> {
+                    // 本格パタパタ：行を細い列に分け、左から順に1列ずつめくる。
+                    // めくる途中は、古い表示が縦につぶれて消え、新しい表示が縦に開いて出る
+                    val cw = w / cells
+                    val cy = rect.centerY()
+                    for (k in 0 until cells) {
+                        val pk = RotateMath.flapCell(elapsedMs.toFloat(), k, FLAP_STAGGER, FLAP_FLIP)
+                        val x0 = rect.left + k * cw
+                        c.save()
+                        c.clipRect(x0, rect.top, x0 + cw + 0.5f, rect.bottom)
+                        if (pk < 0.5f) {
+                            c.scale(1f, 1f - 2f * pk, 0f, cy); drawRow(c, old, now, top, oldPos)
+                        } else {
+                            c.scale(1f, 2f * pk - 1f, 0f, cy); drawRow(c, cur, now, top, curPos)
+                        }
+                        c.restore()
+                        // めくれ目の線（板の継ぎ目）
+                        if (pk > 0f && pk < 1f) {
+                            fill.color = LINE
+                            c.drawRect(x0, cy - dp(0.5f), x0 + cw, cy + dp(0.5f), fill)
+                        }
+                    }
+                }
+                RotateAnim.NONE -> drawRow(c, cur, now, top, curPos)
+            }
+            c.restore()
+        }
+
+        /**
+         * 1件分の行を top から描く（上の余白8dpを含む）。
+         * 戻り値は、名前を電光掲示板のように流している（なめらかに描き直す必要がある）か
+         */
+        private fun drawRow(c: Canvas, item: Item, now: Long, top: Float, pos: String?): Boolean {
+            val parts = Calc.parts(item, now) ?: return false
+            var y = top + dp(8f)
+            val target = item.targetMillis()!!
+            val left = target - now
+            val color = if (item.kind == Kind.DEADLINE && left < 7 * Calc.DAY_MS) URGENT else AMBER
+            var moving = false
+
+            // 1行目：種類ラベル＋名前（＋切り替え中は「2/5」）
+            val (chipBg, chipFg) = chipColors(item.kind)
+            chipP.color = chipFg
+            val chipW = chipP.measureText(item.kind.label) + dp(12f)
+            val chipH = lineH(chipP) + dp(2f)
+            val line1H = maxOf(lineH(titleP), chipH)
+            val chipTop = y + (line1H - chipH) / 2
+            fill.color = chipBg
+            c.drawRoundRect(RectF(innerLeft, chipTop, innerLeft + chipW, chipTop + chipH), dp(4f), dp(4f), fill)
+            c.drawText(item.kind.label, innerLeft + dp(6f), chipTop + dp(1f) - chipP.fontMetrics.ascent, chipP)
+            var titleRight = innerRight
+            if (pos != null) {
+                val pw = posP.measureText(pos)
+                c.drawText(pos, innerRight - pw, y + (line1H - lineH(posP)) / 2 - posP.fontMetrics.ascent, posP)
+                titleRight = innerRight - pw - dp(8f)
+            }
+            val titleLeft = innerLeft + chipW + dp(8f)
+            val avail = titleRight - titleLeft
+            val titleBase = y + (line1H - lineH(titleP)) / 2 - titleP.fontMetrics.ascent
+            val tw = titleP.measureText(item.title)
+            if (marquee && tw > avail && avail > 0) {
+                // 電光掲示板：入りきらない名前を右から左へ流し続ける
+                val gap = dp(40f)
+                val off = RotateMath.marqueeOffset(now, dp(MARQUEE_DP_PER_SEC), tw + gap)
+                c.save()
+                c.clipRect(titleLeft, y, titleRight, y + line1H)
+                c.drawText(item.title, titleLeft - off, titleBase, titleP)
+                c.drawText(item.title, titleLeft - off + tw + gap, titleBase, titleP)
+                c.restore()
+                moving = true
+            } else {
+                val shown = TextUtils.ellipsize(item.title, titleP, maxOf(0f, avail), TextUtils.TruncateAt.END).toString()
+                c.drawText(shown, titleLeft, titleBase, titleP)
+            }
+            y += line1H + dp(2f)
+
+            // 2行目：大きい数字＋単位＋時:分:秒（右寄せ、下揃え）
+            bigP.color = color
+            val clockP = text(DotRenderer.clockSp(parts), color)
+            val segs = mutableListOf<Triple<String, Paint, Float>>()
+            parts.big?.let { segs += Triple(it, bigP, dp(3f)) }
+            parts.unit?.let { if (parts.big != null) segs += Triple(it, unitP, dp(8f)) }
+            parts.clockMs?.let { segs += Triple(Calc.hms(it), clockP, 0f) }
+            if (segs.isEmpty()) segs += Triple("-", clockP, 0f)
+            val baseline = y - bigP.fontMetrics.ascent
+            var x = innerRight - segs.sumOf { (s, p, g) -> (p.measureText(s) + g).toDouble() }.toFloat()
+            for ((s, p, g) in segs) {
+                c.drawText(s, x, baseline, p)
+                x += p.measureText(s) + g
+            }
+            y += lineH(bigP) + dp(4f)
+
+            // 進み具合バー
+            val start = item.startMillis()
+            if (start != null && target > start) {
+                val ratio = ((now - start).toFloat() / (target - start)).coerceIn(0f, 1f)
+                fill.color = LINE
+                c.drawRoundRect(RectF(innerLeft, y, innerRight, y + dp(3f)), dp(2f), dp(2f), fill)
+                fill.color = barColor(item.kind)
+                c.drawRoundRect(RectF(innerLeft, y, innerLeft + (innerRight - innerLeft) * ratio, y + dp(3f)),
+                    dp(2f), dp(2f), fill)
+            }
+            return moving
         }
     }
 }

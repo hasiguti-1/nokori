@@ -116,8 +116,17 @@ class CountdownWidget : AppWidgetProvider() {
             var nextRefresh = Long.MAX_VALUE
             // 切り替え中の行（行番号と「2/5」の表示）
             var rotRow: Pair<Int, String>? = null
+            var rot: Rotation? = null
             val shown: List<Item>
-            if (settings.rotate) {
+            val anim = settings.rotateAnim
+            if (settings.rotate && anim != RotateAnim.NONE && rest.size > 1) {
+                // 動きを付けて切り替える：めくり部品に全部の項目を入れておく（アラームで起こさない）
+                val period = settings.rotateSec * 1000L
+                val max = if (settings.font.isImage) MAX_ROT_DOT else MAX_ROT_TEXT
+                val list = rest.take(max)
+                rot = Rotation(list, ((now / period) % list.size).toInt(), period, anim)
+                shown = pinned
+            } else if (settings.rotate) {
                 // 固定の下に1行だけ出し、一定間隔で次の項目に切り替える。
                 // 何件目を出すかは時刻から決めるので、状態を保存しなくてよい
                 val period = settings.rotateSec * 1000L
@@ -134,8 +143,15 @@ class CountdownWidget : AppWidgetProvider() {
 
             // ドット文字は幅に合わせて画像を描くので、ウィジェットごとに作る
             for (wid in ids) {
-                val (views, next) = build(ctx, mgr, wid, settings, shown, now, elapsedNow, rotRow)
-                mgr.updateAppWidget(wid, views)
+                val (views, next) = build(ctx, mgr, wid, settings, shown, now, elapsedNow, rotRow, rot)
+                try {
+                    mgr.updateAppWidget(wid, views)
+                } catch (e: RuntimeException) {
+                    // 画像が多すぎてホーム画面に送れなかったとき：切り替える項目を2件に減らして送り直す
+                    val small = rot?.let { it.copy(items = it.items.take(2), start = it.start % minOf(2, it.items.size)) }
+                    val (v2, _) = build(ctx, mgr, wid, settings, shown, now, elapsedNow, rotRow, small)
+                    try { mgr.updateAppWidget(wid, v2) } catch (e2: RuntimeException) { }
+                }
                 nextRefresh = minOf(nextRefresh, next)
             }
             // ウィジェットがないときは、ウィジェット用の描き直しは要らない
@@ -146,11 +162,30 @@ class CountdownWidget : AppWidgetProvider() {
             scheduleNext(ctx, nextRefresh)
         }
 
+        /** 動きを付けて切り替える項目（start は最初に出す項目、periodMs は切り替えの間隔） */
+        private data class Rotation(val items: List<Item>, val start: Int, val periodMs: Long, val anim: RotateAnim)
+
+        /** 動きを付けて切り替える項目の上限（ドット文字は画像が多く、送れる量を超えないよう少なめ） */
+        private const val MAX_ROT_TEXT = 10
+        private const val MAX_ROT_DOT = 5
+
+        /** 切り替えの中の1項目のレイアウト（字体ごと） */
+        private fun rowLayout(font: FontChoice, ringFallback: Boolean) = when (font) {
+            FontChoice.MONO -> R.layout.row_mono
+            FontChoice.SANS -> R.layout.row_sans
+            FontChoice.LIGHT -> R.layout.row_light
+            FontChoice.CONDENSED -> R.layout.row_condensed
+            FontChoice.SERIF -> R.layout.row_serif
+            FontChoice.DOT -> R.layout.row_dot
+            FontChoice.DOT_SEC -> R.layout.row_dotsec
+            FontChoice.DOT_RING -> if (ringFallback) R.layout.row_dotsec else R.layout.row_dotring
+        }
+
         /** 1つのウィジェットの中身を作る。戻り値は（表示内容, 次に描き直す時刻） */
         private fun build(
             ctx: Context, mgr: AppWidgetManager, wid: Int,
             settings: Settings, shown: List<Item>, now: Long, elapsedNow: Long,
-            rotRow: Pair<Int, String>?,
+            rotRow: Pair<Int, String>?, rot: Rotation?,
         ): Pair<RemoteViews, Long> {
             val font = settings.font
             val dot = font.isImage
@@ -159,7 +194,8 @@ class CountdownWidget : AppWidgetProvider() {
             val ringFallback = font == FontChoice.DOT_RING && !ring
             val secs = font == FontChoice.DOT_SEC || ringFallback
             val views = RemoteViews(ctx.packageName, if (ringFallback) R.layout.widget_dotsec else font.layout)
-            views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
+            val nothing = shown.isEmpty() && (rot == null || rot.items.isEmpty())
+            views.setViewVisibility(R.id.empty, if (nothing) View.VISIBLE else View.GONE)
 
             // ウィジェットの幅（縦向き画面での幅＝MIN_WIDTH。左右の余白14dp×2を引く）
             val widthDp = mgr.getAppWidgetOptions(wid)
@@ -176,29 +212,27 @@ class CountdownWidget : AppWidgetProvider() {
                 nextRefresh = now + (60_000L - now % 60_000L) + 200
             }
 
-            for (i in 0 until Settings.MAX_ROWS) {
-                val rowId = id(ctx, "row$i")
-                val item = shown.getOrNull(i)
-                if (item == null) {
-                    views.setViewVisibility(rowId, View.GONE)
-                    continue
-                }
+            /**
+             * 1件分の行を埋める（v はウィジェット全体か、切り替えの中の1項目の部品）。
+             * pos は切り替え中の「2/5」の表示。戻り値は、この行のために次に描き直す時刻
+             */
+            fun fillRow(v: RemoteViews, i: Int, item: Item, pos: String?): Long {
+                var next = Long.MAX_VALUE
                 val target = item.targetMillis()!!
                 val left = target - now
                 val parts = Calc.parts(item, now)!!
-                views.setViewVisibility(rowId, View.VISIBLE)
+                v.setViewVisibility(id(ctx, "row$i"), View.VISIBLE)
 
                 // 切り替え中の行だけ「2/5」を出す
                 val posId = id(ctx, "pos$i")
-                val pos = rotRow?.takeIf { it.first == i }?.second
-                views.setTextViewText(posId, pos ?: "")
-                views.setViewVisibility(posId, if (pos != null) View.VISIBLE else View.GONE)
+                v.setTextViewText(posId, pos ?: "")
+                v.setViewVisibility(posId, if (pos != null) View.VISIBLE else View.GONE)
 
                 // 種類ラベル
                 val chip = id(ctx, "chip$i")
-                views.setTextViewText(chip, item.kind.label)
-                views.setInt(chip, "setBackgroundResource", chipBg(item.kind))
-                views.setTextColor(chip, chipText(item.kind))
+                v.setTextViewText(chip, item.kind.label)
+                v.setInt(chip, "setBackgroundResource", chipBg(item.kind))
+                v.setTextColor(chip, chipText(item.kind))
 
                 // 残り（締切は7日を切ったら赤）
                 val color = if (item.kind == Kind.DEADLINE && left < 7 * Calc.DAY_MS) URGENT else AMBER
@@ -206,7 +240,7 @@ class CountdownWidget : AppWidgetProvider() {
                 if (dot) {
                     // 名前と数字をドット文字の画像で（種類ラベルの幅ぶん名前を短く）
                     val titleMax = innerPx - DotRenderer.dp(ctx, if (pos != null) 110f else 72f).toInt()
-                    views.setImageViewBitmap(id(ctx, "titleimg$i"),
+                    v.setImageViewBitmap(id(ctx, "titleimg$i"),
                         DotRenderer.text(ctx, item.title, 16f, DotRenderer.TITLE, maxOf(50, titleMax)))
                     val clock = parts.clockMs
                     // 秒ありは、画像を「◯日」までにして、「時:分:秒」は標準の時計部品に数えさせる。
@@ -215,21 +249,21 @@ class CountdownWidget : AppWidgetProvider() {
                     val num = DotRenderer.number(ctx, parts, color, clockByChrono = secs, ringSeconds = ring)
                     val numId = id(ctx, "numimg$i")
                     if (num.bitmap != null) {
-                        views.setImageViewBitmap(numId, num.bitmap)
-                        views.setViewVisibility(numId, View.VISIBLE)
+                        v.setImageViewBitmap(numId, num.bitmap)
+                        v.setViewVisibility(numId, View.VISIBLE)
                     } else {
-                        views.setViewVisibility(numId, View.GONE)
+                        v.setViewVisibility(numId, View.GONE)
                     }
                     if (secs) {
                         val cId = id(ctx, "secc$i")
                         if (clock != null) {
-                            views.setViewVisibility(cId, View.VISIBLE)
-                            views.setChronometer(cId, elapsedNow + clock, "%s", true)
-                            views.setChronometerCountDown(cId, true)
-                            views.setTextColor(cId, color)
-                            views.setTextViewTextSize(cId, TypedValue.COMPLEX_UNIT_SP, num.clockSp)
+                            v.setViewVisibility(cId, View.VISIBLE)
+                            v.setChronometer(cId, elapsedNow + clock, "%s", true)
+                            v.setChronometerCountDown(cId, true)
+                            v.setTextColor(cId, color)
+                            v.setTextViewTextSize(cId, TypedValue.COMPLEX_UNIT_SP, num.clockSp)
                         } else {
-                            views.setViewVisibility(cId, View.GONE)
+                            v.setViewVisibility(cId, View.GONE)
                         }
                         // 秒ありの描き直しは、見出しの時刻（毎分）と日数の変わり目（下で設定）だけ
                     } else if (ring) {
@@ -239,7 +273,7 @@ class CountdownWidget : AppWidgetProvider() {
                         for ((tag, isBig) in listOf("a" to false, "b" to true)) {
                             val winId = id(ctx, "ringw$tag$i")
                             if (clock == null || isBig != big) {
-                                views.setViewVisibility(winId, View.GONE)
+                                v.setViewVisibility(winId, View.GONE)
                                 continue
                             }
                             val cId = id(ctx, "ring$tag$i")
@@ -249,38 +283,38 @@ class CountdownWidget : AppWidgetProvider() {
                                 isBig -> R.drawable.dotring_amber_26
                                 else -> R.drawable.dotring_amber_18
                             }
-                            views.setViewVisibility(winId, View.VISIBLE)
-                            views.setIcon(cId, "setSecondHand", Icon.createWithResource(ctx, res))
-                            views.setString(cId, "setTimeZone", RingSeconds.zone(target))
+                            v.setViewVisibility(winId, View.VISIBLE)
+                            v.setIcon(cId, "setSecondHand", Icon.createWithResource(ctx, res))
+                            v.setString(cId, "setTimeZone", RingSeconds.zone(target))
                         }
-                        if (clock != null) nextRefresh = minOf(nextRefresh, now + left % 60_000L + 30)
+                        if (clock != null) next = minOf(next, now + left % 60_000L + 30)
                     } else {
                         // 秒なしは画像の「時:分」を変える
-                        nextRefresh = minOf(nextRefresh, now + left % 60_000L + 200)
+                        next = minOf(next, now + left % 60_000L + 200)
                     }
                 } else {
-                    views.setTextViewText(id(ctx, "title$i"), item.title)
+                    v.setTextViewText(id(ctx, "title$i"), item.title)
                     // 表示単位に合わせて数字・単位・時計を出し分け
                     val daysId = id(ctx, "days$i")
                     val unitId = id(ctx, "unit$i")
                     val chronoId = id(ctx, "chrono$i")
                     if (parts.big != null) {
-                        views.setViewVisibility(daysId, View.VISIBLE)
-                        views.setViewVisibility(unitId, View.VISIBLE)
-                        views.setTextViewText(daysId, parts.big)
-                        views.setTextViewText(unitId, parts.unit ?: "")
-                        views.setTextColor(daysId, color)
+                        v.setViewVisibility(daysId, View.VISIBLE)
+                        v.setViewVisibility(unitId, View.VISIBLE)
+                        v.setTextViewText(daysId, parts.big)
+                        v.setTextViewText(unitId, parts.unit ?: "")
+                        v.setTextColor(daysId, color)
                     } else {
-                        views.setViewVisibility(daysId, View.GONE)
-                        views.setViewVisibility(unitId, View.GONE)
+                        v.setViewVisibility(daysId, View.GONE)
+                        v.setViewVisibility(unitId, View.GONE)
                     }
                     if (parts.clockMs != null) {
-                        views.setViewVisibility(chronoId, View.VISIBLE)
-                        views.setChronometer(chronoId, elapsedNow + parts.clockMs, "%s", true)
-                        views.setChronometerCountDown(chronoId, true)
-                        views.setTextColor(chronoId, color)
+                        v.setViewVisibility(chronoId, View.VISIBLE)
+                        v.setChronometer(chronoId, elapsedNow + parts.clockMs, "%s", true)
+                        v.setChronometerCountDown(chronoId, true)
+                        v.setTextColor(chronoId, color)
                     } else {
-                        views.setViewVisibility(chronoId, View.GONE)
+                        v.setViewVisibility(chronoId, View.GONE)
                     }
                 }
 
@@ -290,17 +324,48 @@ class CountdownWidget : AppWidgetProvider() {
                     val barId = id(ctx, "bar${i}_${k.name.lowercase()}")
                     if (k == item.kind && start != null && target > start) {
                         val p = (((now - start).toDouble() / (target - start)) * 1000).toInt().coerceIn(0, 1000)
-                        views.setViewVisibility(barId, View.VISIBLE)
-                        views.setProgressBar(barId, 1000, p, false)
+                        v.setViewVisibility(barId, View.VISIBLE)
+                        v.setProgressBar(barId, 1000, p, false)
                     } else {
-                        views.setViewVisibility(barId, View.GONE)
+                        v.setViewVisibility(barId, View.GONE)
                     }
                 }
 
                 // 次に描き直す時刻：日数が変わる瞬間（＝期日も含む）
-                nextRefresh = minOf(nextRefresh, now + left % Calc.DAY_MS + 500)
+                next = minOf(next, now + left % Calc.DAY_MS + 500)
                 // 割合表示は時計がないので15分ごとに更新
-                if (item.unit == DisplayUnit.PERCENT) nextRefresh = minOf(nextRefresh, now + 15 * 60_000L)
+                if (item.unit == DisplayUnit.PERCENT) next = minOf(next, now + 15 * 60_000L)
+                return next
+            }
+
+            for (i in 0 until Settings.MAX_ROWS) {
+                val rowId = id(ctx, "row$i")
+                val item = shown.getOrNull(i)
+                if (item == null) {
+                    views.setViewVisibility(rowId, View.GONE)
+                    continue
+                }
+                val pos = rotRow?.takeIf { it.first == i }?.second
+                nextRefresh = minOf(nextRefresh, fillRow(views, i, item, pos))
+            }
+
+            // 「固定＋切り替え」で動きを付けるとき：固定の下の箱に、めくり部品と各項目の行を入れる。
+            // めくり部品はホーム画面の側で一定間隔でめくるので、切り替えのためにアプリを起こさなくてよい
+            views.removeAllViews(R.id.rotbox)
+            if (rot != null && rot.items.isNotEmpty()) {
+                val fl = RemoteViews(ctx.packageName, rot.anim.layout)
+                rot.items.forEachIndexed { j, item ->
+                    val rv = RemoteViews(ctx.packageName, rowLayout(font, ringFallback))
+                    nextRefresh = minOf(nextRefresh, fillRow(rv, 0, item, "${j + 1}/${rot.items.size}"))
+                    fl.addView(R.id.flipper, rv)
+                }
+                fl.setInt(R.id.flipper, "setFlipInterval", rot.periodMs.toInt())
+                // 描き直しのたびに最初の項目へ戻らないよう、時刻から決めた項目から始める
+                fl.setDisplayedChild(R.id.flipper, rot.start)
+                views.addView(R.id.rotbox, fl)
+                views.setViewVisibility(R.id.rotbox, View.VISIBLE)
+            } else {
+                views.setViewVisibility(R.id.rotbox, View.GONE)
             }
 
             val open = PendingIntent.getActivity(

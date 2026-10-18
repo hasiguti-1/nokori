@@ -151,6 +151,16 @@ class SettingsActivity : Activity() {
             })
         }
         rotBox.addView(interval)
+        rotBox.addView(note("切り替えの動き（ホーム画面のウィジェットとライブ壁紙の両方。パタパタは、ライブ壁紙では1列ずつめくれます。動きがあるときは、ほかのアプリから戻ると止まった項目の続きから再開します）"))
+        val animGroup = RadioGroup(this)
+        RotateAnim.values().forEachIndexed { i, a ->
+            animGroup.addView(RadioButton(this).apply {
+                id = 2400 + i; text = a.label
+                isChecked = s.rotateAnim == a
+                setOnClickListener { s.rotateAnim = a; CountdownWidget.refreshAll(this@SettingsActivity) }
+            })
+        }
+        rotBox.addView(animGroup)
         rotBox.visibility = if (s.rotate) View.VISIBLE else View.GONE
         box.addView(rotBox)
 
@@ -199,6 +209,9 @@ class SettingsActivity : Activity() {
         // ── ライブ壁紙 ──
         box.addView(heading("ライブ壁紙（ロック画面にも出す）"))
         box.addView(note("ウィジェットと同じボードを壁紙に描きます。ロック画面にも同じ壁紙が使われる機種なら、ロック画面にも出ます。出す項目と件数はウィジェットと同じです"))
+        box.addView(check("名前が入りきらないときは電光掲示板のように流す（電池をやや多く使う）", s.wallMarquee) {
+            s.wallMarquee = it
+        })
         box.addView(Button(this).apply {
             text = "背景の写真を選ぶ"
             setOnClickListener {
