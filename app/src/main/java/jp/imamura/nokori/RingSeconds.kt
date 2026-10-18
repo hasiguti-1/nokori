@@ -3,7 +3,7 @@ package jp.imamura.nokori
 import java.util.Locale
 
 /**
- * 試作B（秒の回転盤）で、AnalogClock に渡す「タイムゾーン」を決める。
+ * ドット文字（秒あり・秒もドット）の秒の回転盤で、AnalogClock に渡す「タイムゾーン」を決める。
  *
  * AnalogClock は、指定したタイムゾーンの今の時刻の「秒」s だけ秒針（＝回転盤）を回す。
  * 盤の数字 k は上から時計回りに 6k 度の位置にあるので、上に来るのは k = -s（mod 60）。

@@ -41,12 +41,13 @@ class SettingsActivity : Activity() {
         box.addView(note("Android に入っている字体から選びます。数字の見え方が変わります"))
         val fonts = RadioGroup(this)
         FontChoice.values().forEachIndexed { i, f ->
+            // 秒もドットの表示は Android 12 以上だけ（それより前の機種では選択肢に出さない）
+            if (f == FontChoice.DOT_RING && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return@forEachIndexed
             fonts.addView(RadioButton(this).apply {
                 id = 1000 + i
                 text = when (f) {
                     FontChoice.DOT -> "${f.label}　33日 8:12"
-                    FontChoice.DOT_SEC, FontChoice.DOT_XMLFONT, FontChoice.DOT_RING ->
-                        "${f.label}　33日 8:12:44"
+                    FontChoice.DOT_SEC, FontChoice.DOT_RING -> "${f.label}　33日 8:12:44"
                     else -> "${f.label}　33日 08:12:44"
                 }
                 typeface = if (f.isImage) resources.getFont(R.font.dotgothic16)

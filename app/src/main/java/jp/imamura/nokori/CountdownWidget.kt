@@ -144,11 +144,10 @@ class CountdownWidget : AppWidgetProvider() {
         ): Pair<RemoteViews, Long> {
             val font = settings.font
             val dot = font.isImage
-            // 試作B（秒の回転盤）は Android 12 以上だけ。それより前は「秒あり・時刻は等幅」で出す
+            // 秒の回転盤は Android 12 以上だけ。それより前は「秒あり・時刻は等幅」で出す
             val ring = font == FontChoice.DOT_RING && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             val ringFallback = font == FontChoice.DOT_RING && !ring
-            // 試作A は「秒あり・時刻は等幅」と同じ処理で、レイアウトの字体指定だけが違う
-            val secs = font == FontChoice.DOT_SEC || font == FontChoice.DOT_XMLFONT || ringFallback
+            val secs = font == FontChoice.DOT_SEC || ringFallback
             val views = RemoteViews(ctx.packageName, if (ringFallback) R.layout.widget_dotsec else font.layout)
             views.setViewVisibility(R.id.empty, if (shown.isEmpty()) View.VISIBLE else View.GONE)
 
@@ -160,8 +159,9 @@ class CountdownWidget : AppWidgetProvider() {
             var nextRefresh = Long.MAX_VALUE
             if (dot) {
                 val t = java.time.LocalTime.now(Calc.zone())
-                views.setImageViewBitmap(R.id.headerimg,
-                    DotRenderer.header(ctx, innerPx, String.format(Locale.JAPAN, "%02d:%02d", t.hour, t.minute)))
+                views.setImageViewBitmap(R.id.headerlabel, DotRenderer.header(ctx, "残り時間"))
+                views.setImageViewBitmap(R.id.headertime,
+                    DotRenderer.header(ctx, String.format(Locale.JAPAN, "%02d:%02d", t.hour, t.minute)))
                 // 時計の分が変わる瞬間
                 nextRefresh = now + (60_000L - now % 60_000L) + 200
             }
@@ -223,7 +223,7 @@ class CountdownWidget : AppWidgetProvider() {
                         }
                         // 秒ありの描き直しは、見出しの時刻（毎分）と日数の変わり目（下で設定）だけ
                     } else if (ring) {
-                        // 試作B：秒は回転盤（AnalogClock）が時刻から毎秒計算する。
+                        // 秒は回転盤（AnalogClock）が時刻から毎秒計算する。
                         // 「時:分:」の画像は、残りの分が変わる瞬間に描き直す
                         val big = num.clockSp > 20f
                         for ((tag, isBig) in listOf("a" to false, "b" to true)) {

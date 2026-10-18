@@ -19,13 +19,14 @@ enum class FontChoice(val label: String, val family: String, val layout: Int) {
     DOT("ドット文字（秒なし）", "", R.layout.widget_dot),
     /** 「◯日」まではドット文字の画像、「時:分:秒」は標準の時計部品（等幅）で、端末の経過時間から数える */
     DOT_SEC("ドット文字（秒あり・時刻は等幅）", "", R.layout.widget_dotsec),
-    /** 検証用ブランチの試作A：DOT_SEC と同じで、時計部品にアプリ同梱のドット字体を XML で直接指定 */
-    DOT_XMLFONT("試作A：時計の字体をXMLでドット指定", "", R.layout.widget_dotxml),
-    /** 検証用ブランチの試作B：「◯日 時:分:」は画像、秒はドット文字の回転盤（Android 12 以上） */
-    DOT_RING("試作B：秒もドット文字（回転盤）", "", R.layout.widget_dotring);
+    /**
+     * 「◯日 時:分:」はドット文字の画像（毎分描き直す）、秒はドット文字の回転盤（AnalogClock の秒針）で、
+     * 時刻から毎秒計算する。Android 12 以上だけ（それより前は DOT_SEC と同じ表示になる）
+     */
+    DOT_RING("ドット文字（秒あり・秒もドット）", "", R.layout.widget_dotring);
 
     /** 文字を画像で描く字体か */
-    val isImage: Boolean get() = this == DOT || this == DOT_SEC || this == DOT_XMLFONT || this == DOT_RING
+    val isImage: Boolean get() = this == DOT || this == DOT_SEC || this == DOT_RING
 
     companion object {
         fun from(name: String?) = values().firstOrNull { it.name == name } ?: MONO

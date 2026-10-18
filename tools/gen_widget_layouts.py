@@ -219,15 +219,16 @@ def layout(font, preview=False):
 '''
 
 
-def sec_chrono(cid, font="monospace"):
+def sec_chrono(cid):
     """秒あり用の「時:分:秒」。Android 標準の時計部品なので、端末の経過時間から数える
     （ホーム画面に戻ったときもずれない）。文字の大きさと色はアプリから入れる。
-    font は試作A で "@font/dotgothic16"（アプリ同梱の字体を直接指定できるかの検証）"""
+    字体は端末の等幅に限られる（ホーム画面はアプリ同梱の字体を読まない。XML で
+    @font/dotgothic16 を指定しても効かないことを試作で確認した）"""
     return f'''<Chronometer
                 android:id="@+id/{cid}"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="{font}"
+                android:fontFamily="monospace"
                 android:includeFontPadding="false"
                 android:textColor="#FFB23E"
                 android:textSize="18sp"
@@ -235,7 +236,7 @@ def sec_chrono(cid, font="monospace"):
 
 
 def ring_window(wid, cid, sp):
-    """試作B：秒の回転盤。AnalogClock（盤の絵は tools/gen_dot_ring.py）を、
+    """秒の回転盤。AnalogClock（盤の絵は tools/gen_dot_ring.py）を、
     数字2けたぶんの窓（FrameLayout）で切り抜き、上端の1つだけを見せる"""
     g = ring_geometry(sp)
     return f'''<FrameLayout
@@ -255,17 +256,17 @@ def ring_window(wid, cid, sp):
             </FrameLayout>'''
 
 
-def dot_layout(secs=False, sec_font="monospace", ring=False):
+def dot_layout(secs=False, ring=False):
     """ドット文字用。文字は画像で描くので ImageView を置く。
     secs=True なら「時:分:秒」を標準の時計部品で出す（「◯日」までは画像）。
-    ring=True（試作B）なら「◯日 時:分:」までを画像にし、秒は回転盤で出す（18sp用と26sp用）。"""
+    ring=True（秒もドット）なら「◯日 時:分:」までを画像にし、秒は回転盤で出す（18sp用と26sp用）。"""
     rows = []
     for i in range(ROWS):
         if ring:
             sec_parts = ring_window(f"ringwa{i}", f"ringa{i}", 18) + "\n            " + \
                 ring_window(f"ringwb{i}", f"ringb{i}", 26)
         elif secs:
-            sec_parts = sec_chrono(f"secc{i}", sec_font)
+            sec_parts = sec_chrono(f"secc{i}")
         else:
             sec_parts = ""
         bars = "\n".join(f'''<ProgressBar
@@ -348,11 +349,27 @@ def dot_layout(secs=False, sec_font="monospace", ring=False):
     android:paddingTop="10dp"
     android:paddingBottom="10dp">
 
-    <ImageView
-        android:id="@+id/headerimg"
-        android:layout_width="wrap_content"
+    <!-- 見出し：左に「残り時間」、右に今の時刻。2枚の画像に分け、間を空きで埋める
+         （1枚の画像を幅に合わせて描くと、ウィジェットの実際の幅が狭い機種で両端が切れたため） -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:scaleType="center" />
+        android:orientation="horizontal">
+        <ImageView
+            android:id="@+id/headerlabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scaleType="center" />
+        <ImageView
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+        <ImageView
+            android:id="@+id/headertime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scaleType="center" />
+    </LinearLayout>
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="1dp"
@@ -379,14 +396,12 @@ if __name__ == "__main__":
         (RES / f"layout/widget_{name}.xml").write_text(layout(fam), encoding="utf-8")
     (RES / "layout/widget_dot.xml").write_text(dot_layout(), encoding="utf-8")
     (RES / "layout/widget_dotsec.xml").write_text(dot_layout(secs=True), encoding="utf-8")
-    # 試作A：時計部品にアプリ同梱のドット字体を XML で直接指定する
-    (RES / "layout/widget_dotxml.xml").write_text(
-        dot_layout(secs=True, sec_font="@font/dotgothic16"), encoding="utf-8")
-    # 試作B：秒をドット文字の回転盤（AnalogClock）で出す。Android 12 以上で使う
+    # 秒もドット文字（回転盤＝AnalogClock）。Android 12 以上で使う
     (RES / "layout/widget_dotring.xml").write_text(dot_layout(ring=True), encoding="utf-8")
     (RES / "layout/widget_preview.xml").write_text(layout("monospace", preview=True), encoding="utf-8")
     # 使わなくなったレイアウト（widget.xml は初期の版、widget_dotsec2.xml は秒の切り替え部品の頃のもの）
-    for old_name in ("widget.xml", "widget_dotsec2.xml"):
+    # widget_dotxml.xml は試作A（時計の字体を XML で指定する検証）のもの
+    for old_name in ("widget.xml", "widget_dotsec2.xml", "widget_dotxml.xml"):
         old = RES / "layout" / old_name
         if old.exists():
             old.unlink()

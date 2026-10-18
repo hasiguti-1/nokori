@@ -6,7 +6,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * 試作B（秒の回転盤）の検査。AOSP の AnalogClock が秒針の角度を決める計算を写し、
+ * ドット文字（秒あり・秒もドット）の秒の回転盤の検査。AOSP の AnalogClock が秒針の角度を決める計算を写し、
  * 盤の上端に見える数字が、本当の残り秒数と一致するかを確かめる。
  * （実物の部品ではなく計算の写し。実物の動きは実機で確認する）
  */

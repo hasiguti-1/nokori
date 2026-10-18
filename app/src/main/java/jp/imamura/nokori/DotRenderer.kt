@@ -52,15 +52,12 @@ object DotRenderer {
         return bmp
     }
 
-    /** 見出し：左に「残り時間」、右に今の時刻（時:分） */
-    fun header(ctx: Context, widthPx: Int, time: String): Bitmap {
+    /** 見出しの文字（「残り時間」や今の時刻）。左右に分けて置くので、幅は文字の幅だけ */
+    fun header(ctx: Context, s: String): Bitmap {
         val p = paint(ctx, 11f, MUTED).apply { letterSpacing = 0.08f }
         val fm = p.fontMetricsInt
-        val h = fm.descent - fm.ascent
-        val bmp = blank(ctx, widthPx, h)
-        val c = Canvas(bmp)
-        c.drawText("残り時間", 0f, -fm.ascent.toFloat(), p)
-        c.drawText(time, widthPx - p.measureText(time), -fm.ascent.toFloat(), p)
+        val bmp = blank(ctx, Math.ceil(p.measureText(s).toDouble()).toInt(), fm.descent - fm.ascent)
+        Canvas(bmp).drawText(s, 0f, -fm.ascent.toFloat(), p)
         return bmp
     }
 
@@ -74,7 +71,7 @@ object DotRenderer {
      * 残りの数字。大きい数字＋単位（小さく灰色）＋時:分 を下揃えで並べる。
      * clockByChrono のときは時計を画像に入れない（後ろに標準の時計部品で「時:分:秒」が並ぶ）。
      * そのときは画像の下の余白を等幅の字体にそろえ、横に並べたときに文字の下端が合うようにする。
-     * ringSeconds（試作B）のときは時計を「時:分:」までにする（後ろに秒の回転盤が並ぶ）。
+     * ringSeconds（秒もドット）のときは時計を「時:分:」までにする（後ろに秒の回転盤が並ぶ）。
      * 画像の下の余白は時計の大きさのドット文字にそろえ、回転盤の数字と下端を合わせる
      */
     fun number(

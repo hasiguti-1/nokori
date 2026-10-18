@@ -8,3 +8,4 @@ local.properties
 # 署名鍵（暗号化前のもの）は絶対に入れない
 app/nokori.jks
 *.jks
+__pycache__/

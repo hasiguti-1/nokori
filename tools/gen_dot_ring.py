@@ -1,4 +1,4 @@
-"""試作B（秒もドット文字・回転盤方式）の絵を生成する。
+"""ドット文字（秒あり・秒もドット）の、秒の回転盤の絵を生成する。
 
 使い方: python3 tools/gen_dot_ring.py   （fontTools が必要: pip install fonttools）
 
