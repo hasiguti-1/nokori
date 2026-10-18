@@ -161,6 +161,11 @@ class Settings(ctx: Context) {
         get() = Scene.from(p.getString("wall_scene", null))
         set(v) = p.edit().putString("wall_scene", v?.name).apply()
 
+    /** シーンの中の動き（人・車など）：0＝なし、1＝ふつう、2＝多め */
+    var wallLife: Int
+        get() = p.getInt("wall_life", 1).coerceIn(0, 2)
+        set(v) = p.edit().putInt("wall_life", v.coerceIn(0, 2)).apply()
+
     /** ライブ壁紙で、入りきらない名前を電光掲示板のように流すか */
     var wallMarquee: Boolean
         get() = p.getBoolean("wall_marquee", false)

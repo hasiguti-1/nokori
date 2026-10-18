@@ -56,8 +56,8 @@ def stars(d, rnd, y0, y1, n, colors=("#FFFFFF", "#C9D6FF", "#8FA2D9")):
         d.point((x, y), fill=rnd.choice(colors))
 
 
-def skyline(d, rnd, base, hmin, hmax, color, win_colors, lit=0.35, wmin=14, wmax=34):
-    """ビルの影と、明かりのついた窓"""
+def skyline(d, rnd, base, hmin, hmax, color, win_colors, lit=0.35, wmin=14, wmax=34, slots=None):
+    """ビルの影と、明かりのついた窓（slots を渡すと、窓の位置をすべて記録する）"""
     x = -rnd.randrange(10)
     while x < W:
         w = rnd.randrange(wmin, wmax)
@@ -65,6 +65,8 @@ def skyline(d, rnd, base, hmin, hmax, color, win_colors, lit=0.35, wmin=14, wmax
         d.rectangle((x, top, x + w - 1, base), fill=color)
         for wy in range(top + 4, base - 3, 5):
             for wx in range(x + 3, x + w - 3, 4):
+                if slots is not None:
+                    slots.append((wx, wy, color))
                 if rnd.random() < lit:
                     d.rectangle((wx, wy, wx + 1, wy + 1), fill=rnd.choice(win_colors))
         x += w + rnd.randrange(0, 4)
@@ -131,9 +133,7 @@ def airport_morning():
     img = Image.new("RGB", (W, H))
     vgrad(img, 0, 300, [(0, "#3E7CC0"), (0.6, "#8DB8E0"), (1, "#F2D3A2")])
     d = ImageDraw.Draw(img)
-    # 雲
-    for cx, cy, r in ((50, 70, 9), (68, 66, 12), (88, 72, 8), (190, 120, 8), (206, 116, 11), (224, 122, 7)):
-        d.ellipse((cx - r, cy - r // 2, cx + r, cy + r // 2), fill="#F4F7FB")
+    # 雲はアプリが動かして描く（SceneLife.kt）
     # 遠くの山と滑走路
     d.polygon([(0, 270), (60, 250), (120, 262), (190, 244), (270, 266), (270, 300), (0, 300)], fill="#6E86A3")
     d.rectangle((0, 286, W, 300), fill="#7D838C")
@@ -171,6 +171,7 @@ def airport_morning():
 
 
 # ────────────────────────── 3. 屋上の電光看板（斜め） ──────────────────────────
+ROOF_SLOTS = []  # 屋上のシーンの窓の位置（あとで、見えている窓だけを選んでアプリに渡す）
 ROOF_QUAD = [(26, 300), (244, 276), (244, 362), (26, 398)]  # 左上・右上・右下・左下
 
 
@@ -182,8 +183,8 @@ def rooftop_night():
     stars(d, rnd, 0, 200, 50, ("#FFFFFF", "#F7C6FF", "#B9A6FF"))
     d.ellipse((200, 40, 222, 62), fill="#FFF3C9")
     d.ellipse((206, 38, 226, 58), fill="#0C0820")  # 三日月
-    skyline(d, rnd, 470, 60, 200, "#160F2C", ["#FFD27A", "#7FF5FF", "#FF9FD8"], lit=0.25)
-    skyline(d, rnd, 520, 40, 140, "#0E0A1E", ["#FFD27A", "#7FF5FF"], lit=0.2, wmin=20, wmax=44)
+    skyline(d, rnd, 470, 60, 200, "#160F2C", ["#FFD27A", "#7FF5FF", "#FF9FD8"], lit=0.25, slots=ROOF_SLOTS)
+    skyline(d, rnd, 520, 40, 140, "#0E0A1E", ["#FFD27A", "#7FF5FF"], lit=0.2, wmin=20, wmax=44, slots=ROOF_SLOTS)
     # 看板の足場
     for x in (50, 130, 220):
         d.rectangle((x, 380, x + 2, 470), fill="#2A2438")
@@ -260,8 +261,24 @@ def kt_color(c):
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     entries = []
+    windows = []
     for key, label, fn, quad, rows, header, led, title in SCENES:
         img = fn()
+        if key == "ROOFTOP":
+            # 看板や屋上に隠れず、窓として見えているものだけ（ビルの色か窓の明かりの色のまま残っている所）
+            px = img.load()
+            seen = set()
+            for wx, wy, col in ROOF_SLOTS:
+                if (wx, wy) in seen or not (0 <= wx < W - 1 and 0 <= wy < H - 1):
+                    continue
+                cols = {px[wx, wy], px[wx + 1, wy], px[wx, wy + 1], px[wx + 1, wy + 1]}
+                ok = len(cols) == 1 and (cols.pop() in {hexc(col), hexc("#FFD27A"), hexc("#7FF5FF"), hexc("#FF9FD8")})
+                if ok:
+                    seen.add((wx, wy))
+                    windows.append((wx, wy, 0 if col == "#160F2C" else 1))
+            rnd = random.Random(9)
+            rnd.shuffle(windows)
+            windows = sorted(windows[:90])
         name = f"scene_{key.lower()}"
         img.save(OUT / f"{name}.png", optimize=True)
         pts = ", ".join(f"{x}f, {y}f" for x, y in quad)
@@ -286,6 +303,9 @@ enum class Scene(
     ;
 
     companion object {{
+        /** 屋上のシーンで、明かりがついたり消えたりする窓（x, y, ビルの色 0/1 の順） */
+        val ROOFTOP_WINDOWS = intArrayOf({", ".join(f"{x}, {y}, {c}" for x, y, c in windows)})
+
         /** 絵の大きさ（ドット） */
         const val WIDTH = {W}
         const val HEIGHT = {H}

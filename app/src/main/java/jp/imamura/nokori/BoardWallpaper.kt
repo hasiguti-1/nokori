@@ -89,6 +89,8 @@ class BoardWallpaper : WallpaperService() {
         private var pinnedItems: List<Item> = emptyList()
         private var restItems: List<Item> = emptyList()
         private var scene: Scene? = null
+        private val life = SceneLife()
+        private var lifeLevel = 1
         private var sceneCache: Pair<Scene, Bitmap>? = null
         private var itemsLoadedAt = 0L
 
@@ -165,6 +167,7 @@ class BoardWallpaper : WallpaperService() {
             pinnedItems = pinned
             restItems = rest
             scene = s.wallScene
+            lifeLevel = s.wallLife
             itemsLoadedAt = now
         }
 
@@ -289,6 +292,12 @@ class BoardWallpaper : WallpaperService() {
             val oy = (height - b.height * scale) / 2
             // ドット絵なので、ぼかさずに拡大する
             c.drawBitmap(b, null, RectF(ox, oy, ox + b.width * scale, oy + b.height * scale), Paint())
+            // 風景の中の動くもの（人・車・電車など）。絵の座標で描く
+            c.save()
+            c.translate(ox, oy)
+            c.scale(scale, scale)
+            val lifeWant = life.draw(c, sc, now, lifeLevel)
+            c.restore()
 
             // 表示面の四隅（画面の座標）
             val q = FloatArray(8) { i -> if (i % 2 == 0) ox + sc.quad[i] * scale else oy + sc.quad[i] * scale }
@@ -312,7 +321,7 @@ class BoardWallpaper : WallpaperService() {
             c.clipRect(0f, 0f, wc, hc)
             val delay = drawContent(c, now, 0f, sc.header, fixed, pool)
             c.restore()
-            return delay
+            return minOf(delay, lifeWant)
         }
 
         /** シーンの絵（一度読んだら使い回す） */

@@ -222,6 +222,15 @@ class SettingsActivity : Activity() {
             })
         }
         box.addView(sceneGroup)
+        box.addView(note("シーンの中の動き（人が歩く・車や電車が通る・飛行機が飛ぶなど。動いている間は電池を少し多く使います）"))
+        val lifeGroup = RadioGroup(this).apply { orientation = RadioGroup.HORIZONTAL }
+        listOf("なし", "ふつう", "多め").forEachIndexed { i, label ->
+            lifeGroup.addView(RadioButton(this).apply {
+                id = 2600 + i; text = label; isChecked = s.wallLife == i
+                setOnClickListener { s.wallLife = i }
+            })
+        }
+        box.addView(lifeGroup)
         box.addView(check("名前が入りきらないときは電光掲示板のように流す（電池をやや多く使う）", s.wallMarquee) {
             s.wallMarquee = it
         })
