@@ -156,6 +156,11 @@ class Settings(ctx: Context) {
         get() = RotateAnim.from(p.getString("rotate_anim", null))
         set(v) = p.edit().putString("rotate_anim", v.name).apply()
 
+    /** ライブ壁紙のシーン（掲示板のある風景）。null なら写真または濃紺の背景にボードを描く */
+    var wallScene: Scene?
+        get() = Scene.from(p.getString("wall_scene", null))
+        set(v) = p.edit().putString("wall_scene", v?.name).apply()
+
     /** ライブ壁紙で、入りきらない名前を電光掲示板のように流すか */
     var wallMarquee: Boolean
         get() = p.getBoolean("wall_marquee", false)

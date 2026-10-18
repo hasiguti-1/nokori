@@ -209,6 +209,19 @@ class SettingsActivity : Activity() {
         // ── ライブ壁紙 ──
         box.addView(heading("ライブ壁紙（ロック画面にも出す）"))
         box.addView(note("ウィジェットと同じボードを壁紙に描きます。ロック画面にも同じ壁紙が使われる機種なら、ロック画面にも出ます。出す項目と件数はウィジェットと同じです"))
+        box.addView(note("シーン：掲示板のある風景の絵の中に、残り時間をはめこみます（背景の写真の代わりになります）"))
+        val sceneGroup = RadioGroup(this)
+        sceneGroup.addView(RadioButton(this).apply {
+            id = 2500; text = "シーンなし（写真または濃紺の背景）"; isChecked = s.wallScene == null
+            setOnClickListener { s.wallScene = null }
+        })
+        Scene.values().forEachIndexed { i, sc ->
+            sceneGroup.addView(RadioButton(this).apply {
+                id = 2501 + i; text = "${sc.label}（${sc.rows}行）"; isChecked = s.wallScene == sc
+                setOnClickListener { s.wallScene = sc }
+            })
+        }
+        box.addView(sceneGroup)
         box.addView(check("名前が入りきらないときは電光掲示板のように流す（電池をやや多く使う）", s.wallMarquee) {
             s.wallMarquee = it
         })

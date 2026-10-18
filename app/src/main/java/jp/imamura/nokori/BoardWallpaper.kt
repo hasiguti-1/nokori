@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -84,6 +85,11 @@ class BoardWallpaper : WallpaperService() {
         private var periodMs = 10_000L
         private var anim = RotateAnim.NONE
         private var marquee = false
+        private var rotate = false
+        private var pinnedItems: List<Item> = emptyList()
+        private var restItems: List<Item> = emptyList()
+        private var scene: Scene? = null
+        private var sceneCache: Pair<Scene, Bitmap>? = null
         private var itemsLoadedAt = 0L
 
         private var bg: Bitmap? = null
@@ -155,6 +161,10 @@ class BoardWallpaper : WallpaperService() {
             periodMs = s.rotateSec * 1000L
             anim = s.rotateAnim
             marquee = s.wallMarquee
+            rotate = s.rotate
+            pinnedItems = pinned
+            restItems = rest
+            scene = s.wallScene
             itemsLoadedAt = now
         }
 
@@ -194,8 +204,13 @@ class BoardWallpaper : WallpaperService() {
             val c: Canvas = try { holder.lockCanvas() } catch (e: Exception) { null } ?: return 1000L
             var delay = 1000L
             try {
-                drawBackground(c)
-                delay = drawBoard(c, now)
+                val sc = scene
+                if (sc != null) {
+                    delay = drawScene(c, now, sc)
+                } else {
+                    drawBackground(c)
+                    delay = drawBoard(c, now)
+                }
             } finally {
                 try { holder.unlockCanvasAndPost(c) } catch (e: Exception) { }
             }
@@ -221,8 +236,15 @@ class BoardWallpaper : WallpaperService() {
         private val margin get() = dp(16f)
         private val padX get() = dp(14f)
         private val padY get() = dp(10f)
-        private val panelLeft get() = margin
-        private val panelRight get() = width - margin
+        /** パネルの左右（壁紙では画面の余白の内側、シーンでは表示面の中の座標） */
+        private var boxL = 0f
+        private var boxR = 0f
+        private val panelLeft get() = boxL
+        private val panelRight get() = boxR
+        /** 数字・名前の色と、電光掲示板らしいにじみ（シーンごと） */
+        private var ledColor = AMBER
+        private var titleColor = TITLE
+        private var glow = false
         private val innerLeft get() = panelLeft + padX
         private val innerRight get() = panelRight - padX
 
@@ -239,31 +261,108 @@ class BoardWallpaper : WallpaperService() {
 
         /** ボード：画面の下半分に、ウィジェットと同じ並びで描く。戻り値は次に描くまでの時間 */
         private fun drawBoard(c: Canvas, now: Long): Long {
-            val rot = rotItems.isNotEmpty()
-            val rowCount = staticItems.size + (if (rot) 1 else 0)
-            val rh = rowH()
-            val headerH = lineH(header) + dp(5f) + dp(1f)
-            val emptyH = if (rowCount == 0) dp(8f) + lineH(text(13f, MUTED)) else 0f
-            val panelH = padY * 2 + headerH + rowCount * rh + emptyH
+            boxL = margin
+            boxR = width - margin
+            ledColor = AMBER
+            titleColor = TITLE
+            glow = false
+            val (fixed, pool) = layoutRows(null)
+            val rowCount = fixed.size + (if (pool.isNotEmpty()) 1 else 0)
+            val panelH = contentHeight(rowCount, true, rowCount == 0)
             // 上はロック画面の時計を避けて画面の42%から。下にはみ出す場合は上へずらす
             val bottomLimit = height - dp(72f)
             var top = height * 0.42f
             if (top + panelH > bottomLimit) top = maxOf(dp(24f), bottomLimit - panelH)
-
             fill.color = PANEL
             c.drawRoundRect(RectF(panelLeft, top, panelRight, top + panelH), dp(18f), dp(18f), fill)
+            return drawContent(c, now, top, true, fixed, pool)
+        }
 
+        /**
+         * シーン：掲示板のある風景の絵を画面いっぱいに描き、絵の中の表示面（四隅）に
+         * ボードの中身をぴったり重ねる（斜めの表示面でも、四隅に合わせてゆがめて描く）
+         */
+        private fun drawScene(c: Canvas, now: Long, sc: Scene): Long {
+            val b = sceneBitmap(sc)
+            val scale = maxOf(width.toFloat() / b.width, height.toFloat() / b.height)
+            val ox = (width - b.width * scale) / 2
+            val oy = (height - b.height * scale) / 2
+            // ドット絵なので、ぼかさずに拡大する
+            c.drawBitmap(b, null, RectF(ox, oy, ox + b.width * scale, oy + b.height * scale), Paint())
+
+            // 表示面の四隅（画面の座標）
+            val q = FloatArray(8) { i -> if (i % 2 == 0) ox + sc.quad[i] * scale else oy + sc.quad[i] * scale }
+            fun dist(i: Int, j: Int) = Math.hypot((q[2 * i] - q[2 * j]).toDouble(), (q[2 * i + 1] - q[2 * j + 1]).toDouble()).toFloat()
+            val wq = (dist(0, 1) + dist(3, 2)) / 2
+            val hq = (dist(0, 3) + dist(1, 2)) / 2
+
+            ledColor = sc.led
+            titleColor = sc.title
+            glow = true
+            val (fixed, pool) = layoutRows(sc.rows)
+            // 中身の高さは行数で決まる。幅は表示面の縦横比に合わせる（文字が伸び縮みしないように）
+            val hc = contentHeight(sc.rows, sc.header, false)
+            val wc = hc * wq / hq
+            boxL = 0f
+            boxR = wc
+            val m = Matrix()
+            m.setPolyToPoly(floatArrayOf(0f, 0f, wc, 0f, wc, hc, 0f, hc), 0, q, 0, 4)
+            c.save()
+            c.concat(m)
+            c.clipRect(0f, 0f, wc, hc)
+            val delay = drawContent(c, now, 0f, sc.header, fixed, pool)
+            c.restore()
+            return delay
+        }
+
+        /** シーンの絵（一度読んだら使い回す） */
+        private fun sceneBitmap(sc: Scene): Bitmap {
+            sceneCache?.let { (k, bmp) -> if (k == sc) return bmp }
+            val bmp = BitmapFactory.decodeResource(resources, sc.image, BitmapFactory.Options().apply { inScaled = false })
+            sceneCache = sc to bmp
+            return bmp
+        }
+
+        /**
+         * 出す行を決める。maxRows が null なら壁紙の設定どおり（ウィジェットと同じ）。
+         * シーンでは表示面の行数に収める（切り替えるときは、最後の1行を切り替えに使う）。
+         * 戻り値は（いつも出す行, 切り替えで順に出す項目）
+         */
+        private fun layoutRows(maxRows: Int?): Pair<List<Item>, List<Item>> {
+            if (maxRows == null) return staticItems to rotItems
+            return if (rotate && (pinnedItems.size + restItems.size) > maxRows) {
+                val fixed = pinnedItems.take(maxRows - 1)
+                fixed to (pinnedItems.drop(maxRows - 1) + restItems)
+            } else {
+                (pinnedItems + restItems).take(maxRows) to emptyList()
+            }
+        }
+
+        /** 中身の高さ（上下の余白・見出し・行） */
+        private fun contentHeight(rows: Int, header: Boolean, empty: Boolean): Float {
+            val headerH = if (header) lineH(this.header) + dp(5f) + dp(1f) else 0f
+            val emptyH = if (empty) dp(8f) + lineH(text(13f, MUTED)) else 0f
+            return padY * 2 + headerH + rows * rowH() + emptyH
+        }
+
+        /** 見出しと行を top から描く（左右は boxL〜boxR）。戻り値は次に描くまでの時間 */
+        private fun drawContent(c: Canvas, now: Long, top: Float, showHeader: Boolean,
+                                fixed: List<Item>, pool: List<Item>): Long {
+            val rot = pool.isNotEmpty()
+            val rowCount = fixed.size + (if (rot) 1 else 0)
+            val rh = rowH()
             var y = top + padY
-            // 見出し
-            val hfm = header.fontMetrics
-            val t = java.time.LocalTime.now(Calc.zone())
-            val time = String.format(Locale.JAPAN, "%02d:%02d", t.hour, t.minute)
-            c.drawText("残り時間", innerLeft, y - hfm.ascent, header)
-            c.drawText(time, innerRight - header.measureText(time), y - hfm.ascent, header)
-            y += lineH(header) + dp(5f)
-            fill.color = LINE
-            c.drawRect(innerLeft, y, innerRight, y + dp(1f), fill)
-            y += dp(1f)
+            if (showHeader) {
+                val hfm = header.fontMetrics
+                val t = java.time.LocalTime.now(Calc.zone())
+                val time = String.format(Locale.JAPAN, "%02d:%02d", t.hour, t.minute)
+                c.drawText("残り時間", innerLeft, y - hfm.ascent, header)
+                c.drawText(time, innerRight - header.measureText(time), y - hfm.ascent, header)
+                y += lineH(header) + dp(5f)
+                fill.color = LINE
+                c.drawRect(innerLeft, y, innerRight, y + dp(1f), fill)
+                y += dp(1f)
+            }
 
             // 次に描くまで：ふだんは次の秒の切り替わりの少しあと（期日は秒ちょうどなので、残りの秒もそこで変わる）
             var delay = 1000 - now % 1000 + 15
@@ -274,14 +373,14 @@ class BoardWallpaper : WallpaperService() {
             }
 
             var moving = false
-            for (item in staticItems) {
+            for (item in fixed) {
                 if (drawRow(c, item, now, y, null)) moving = true
                 y += rh
             }
             if (rot) {
-                val n = rotItems.size
+                val n = pool.size
                 val idx = RotateMath.index(now, periodMs, n)
-                val cur = rotItems[idx]
+                val cur = pool[idx]
                 val curPos = if (n > 1) "${idx + 1}/$n" else null
                 val cells = maxOf(1, Math.ceil(((panelRight - panelLeft) / dp(FLAP_CELL_DP)).toDouble()).toInt())
                 val dur = if (anim == RotateAnim.FLAP) RotateMath.flapDuration(cells, FLAP_STAGGER, FLAP_FLIP) else ANIM_MS
@@ -290,9 +389,8 @@ class BoardWallpaper : WallpaperService() {
                     if (drawRow(c, cur, now, y, curPos)) moving = true
                 } else {
                     val pi = RotateMath.prevIndex(now, periodMs, n)
-                    val old = rotItems[pi]
-                    val oldPos = "${pi + 1}/$n"
-                    drawTransition(c, now, y, rh, old, oldPos, cur, curPos, p, cells, RotateMath.elapsed(now, periodMs))
+                    drawTransition(c, now, y, rh, pool[pi], "${pi + 1}/$n", cur, curPos, p, cells,
+                        RotateMath.elapsed(now, periodMs))
                     // 動きの最中はなめらかに（約60回/秒）
                     return 16L
                 }
@@ -375,8 +473,12 @@ class BoardWallpaper : WallpaperService() {
             var y = top + dp(8f)
             val target = item.targetMillis()!!
             val left = target - now
-            val color = if (item.kind == Kind.DEADLINE && left < 7 * Calc.DAY_MS) URGENT else AMBER
+            val color = if (item.kind == Kind.DEADLINE && left < 7 * Calc.DAY_MS) URGENT else ledColor
             var moving = false
+            titleP.color = titleColor
+            // シーンでは、光る文字のように少しにじませる
+            if (glow) titleP.setShadowLayer(dp(3f), 0f, 0f, (titleColor and 0x00FFFFFF) or 0x99000000.toInt())
+            else titleP.clearShadowLayer()
 
             // 1行目：種類ラベル＋名前（＋切り替え中は「2/5」）
             val (chipBg, chipFg) = chipColors(item.kind)
@@ -416,7 +518,10 @@ class BoardWallpaper : WallpaperService() {
 
             // 2行目：大きい数字＋単位＋時:分:秒（右寄せ、下揃え）
             bigP.color = color
+            if (glow) bigP.setShadowLayer(dp(3f), 0f, 0f, (color and 0x00FFFFFF) or 0x99000000.toInt())
+            else bigP.clearShadowLayer()
             val clockP = text(DotRenderer.clockSp(parts), color)
+            if (glow) clockP.setShadowLayer(dp(3f), 0f, 0f, (color and 0x00FFFFFF) or 0x99000000.toInt())
             val segs = mutableListOf<Triple<String, Paint, Float>>()
             parts.big?.let { segs += Triple(it, bigP, dp(3f)) }
             parts.unit?.let { if (parts.big != null) segs += Triple(it, unitP, dp(8f)) }
