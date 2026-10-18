@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ライブ壁紙「残り時間ボード」の情報（壁紙を選ぶ画面に出る） -->
+<!-- ライブ壁紙「残り時間ボード」の情報（壁紙を選ぶ画面に出る）。
+     見本の絵は無地の濃紺：MyOS はロック解除の切り替わりでこの絵を画面いっぱいに広げて出すため、
+     ウィジェットの見本の絵だと粗く見えた -->
 <wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/wallpaper_desc"
-    android:thumbnail="@drawable/widget_preview_img" />
+    android:thumbnail="@drawable/wallpaper_thumb" />
