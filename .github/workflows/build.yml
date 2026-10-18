@@ -38,7 +38,17 @@ jobs:
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/nokori.jks.enc -out app/nokori.jks -pass env:NOKORI_KEY_PASSWORD
 
       - name: 単体テスト（残り時間の計算）
-        run: gradle testReleaseUnitTest --no-daemon --stacktrace
+        run: |
+          gradle testReleaseUnitTest --no-daemon --stacktrace
+          # 結果の件数を画面上部の通知に出す（実行されたことを確かめられるように）
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          t = f = e = s = 0
+          for x in glob.glob("app/build/test-results/testReleaseUnitTest/*.xml"):
+              r = ET.parse(x).getroot()
+              t += int(r.get("tests")); f += int(r.get("failures")); e += int(r.get("errors")); s += int(r.get("skipped"))
+          print(f"::notice title=単体テスト::{t}件実行、失敗{f}、エラー{e}、スキップ{s}")
+          PY
 
       - name: ビルド
         env:
