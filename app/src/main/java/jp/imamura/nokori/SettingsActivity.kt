@@ -196,8 +196,8 @@ class SettingsActivity : Activity() {
             exactButton = btn
         }
 
-        // ── ライブ壁紙（検証用） ──
-        box.addView(heading("ライブ壁紙（試作）"))
+        // ── ライブ壁紙 ──
+        box.addView(heading("ライブ壁紙（ロック画面にも出す）"))
         box.addView(note("ウィジェットと同じボードを壁紙に描きます。ロック画面にも同じ壁紙が使われる機種なら、ロック画面にも出ます。出す項目と件数はウィジェットと同じです"))
         box.addView(Button(this).apply {
             text = "背景の写真を選ぶ"
@@ -239,7 +239,7 @@ class SettingsActivity : Activity() {
 
         // ── ロック画面 ──
         box.addView(heading("ロック画面"))
-        box.addView(note("固定した項目のいちばん上（固定がなければ期日がいちばん近い項目）を、通知として出し続けます。ロック画面の通知欄にも出ます。字体は端末の標準です。通知を消したときは、ここで入れ直してください"))
+        box.addView(note("固定した項目のいちばん上（固定がなければ期日がいちばん近い項目）を、通知として出し続けます。字体は端末の標準です。機種によってはロック画面には出ません（ロック画面にはライブ壁紙のほうが確実です）。通知を消したときは、ここで入れ直してください"))
         val lc = check("ロック画面に残り時間を出す（通知）", s.lockNotice) { on ->
             s.lockNotice = on
             if (on && !LockNotice.permitted(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
