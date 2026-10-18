@@ -44,9 +44,6 @@ class RemainingTimeTest {
         val p = Calc.parts(item(now0 + 33 * Calc.DAY_MS + 0 * H + 4 * M, DisplayUnit.HOURS), now0)!!
         assertNull(p.big)
         assertEquals(792 * H + 4 * M, p.clockMs)
-        val (hours, sub) = Calc.splitHour(p.clockMs!!)
-        assertEquals(792L, hours)
-        assertEquals(4 * M, sub)
     }
 
     @Test
@@ -57,33 +54,33 @@ class RemainingTimeTest {
     }
 
     @Test
-    fun 時計部品は止まっていても正しい秒を出す() {
+    fun 時計部品は見えない時間があっても正しい秒を出す() {
         // 描き直した瞬間：壁時計 now0、端末の経過時間 el0
         val el0 = 123_456_789L
         val target = now0 + 4 * H + 12 * M + 34 * S + 250
-        val clock = Calc.parts(item(target), now0)!!.clockMs!!
-        val (_, sub) = Calc.splitHour(clock)
-        val base = el0 + sub
-        // その後、ウィジェットが見えない時間があっても、時計部品は経過時間から計算し直す
-        for (d in listOf(0L, 250L, 251L, 1_000L, 25_000L, 37_400L, 12 * M + 34 * S)) {
+        val base = el0 + Calc.parts(item(target), now0)!!.clockMs!! // ウィジェットで渡す値と同じ
+        // その後、ホーム画面が見えない時間（アプリを開いている・画面オフ）があっても、
+        // 時計部品は見えた瞬間の経過時間から計算し直す。時の境目をまたいでも正しい
+        for (d in listOf(0L, 250L, 251L, 1_000L, 25_000L, 37_400L, 12 * M + 34 * S, 2 * H + 5 * S)) {
             val shown = chronoSeconds(base, el0 + d)
-            val real = (target - (now0 + d)) % H / 1000 // 本当の「1時間未満の残り」の秒（切り捨て）
+            val real = (target - (now0 + d)) / 1000 // 本当の残り（その日のうち）の秒（切り捨て）
             assertEquals("経過 $d ミリ秒", real, shown)
         }
     }
 
     @Test
-    fun 時の境目では時計部品は0になり_そこで描き直す() {
+    fun 日の境目で時計部品は0になり_そこで描き直す() {
         val el0 = 5_000L
-        val target = now0 + 2 * H + 30 * S
-        val (hours, sub) = Calc.splitHour(Calc.parts(item(target), now0)!!.clockMs!!)
-        assertEquals(2L, hours)
-        assertEquals(0L, chronoSeconds(el0 + sub, el0 + 30 * S))
-        // 境目の直後（描き直しは 200 ミリ秒後）。切り捨てなので「-0」ではなく 0 のまま
-        assertEquals(0L, chronoSeconds(el0 + sub, el0 + 30 * S + 200))
-        // 描き直した後は「1:」＋「59:59」
-        val after = Calc.splitHour(Calc.parts(item(target), now0 + 30 * S + 200)!!.clockMs!!)
-        assertEquals(1L, after.first)
-        assertEquals(59L * 60 + 59, after.second / 1000)
+        val target = now0 + 1 * Calc.DAY_MS + 30 * S
+        val p = Calc.parts(item(target), now0)!!
+        assertEquals("1", p.big)
+        val base = el0 + p.clockMs!!
+        assertEquals(0L, chronoSeconds(base, el0 + 30 * S))
+        // 境目の直後（描き直しは 500 ミリ秒後）。切り捨てなので「−」は付かず 0 のまま
+        assertEquals(0L, chronoSeconds(base, el0 + 30 * S + 500))
+        // 描き直した後は「0日」＋「23:59:59」
+        val after = Calc.parts(item(target), now0 + 30 * S + 500)!!
+        assertEquals("0", after.big)
+        assertEquals(23L * 3600 + 59 * 60 + 59, after.clockMs!! / 1000)
     }
 }

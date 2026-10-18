@@ -17,8 +17,8 @@ enum class FontChoice(val label: String, val family: String, val layout: Int) {
     SERIF("明朝風", "serif", R.layout.widget_serif),
     /** 文字を画像で描く。秒は出さず1分ごとに更新 */
     DOT("ドット文字（秒なし）", "", R.layout.widget_dot),
-    /** 「時」まではドット文字の画像、「分:秒」は標準の時計部品（等幅）で、実際の時刻から数える */
-    DOT_SEC("ドット文字（秒あり・分秒は等幅）", "", R.layout.widget_dotsec);
+    /** 「◯日」まではドット文字の画像、「時:分:秒」は標準の時計部品（等幅）で、端末の経過時間から数える */
+    DOT_SEC("ドット文字（秒あり・時刻は等幅）", "", R.layout.widget_dotsec);
 
     /** 文字を画像で描く字体か */
     val isImage: Boolean get() = this == DOT || this == DOT_SEC

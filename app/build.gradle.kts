@@ -43,3 +43,8 @@ android {
         jvmTarget = "17"
     }
 }
+
+dependencies {
+    // 単体テスト（端末なしで動く計算の検査）。アプリ本体には入らない
+    testImplementation("junit:junit:4.13.2")
+}

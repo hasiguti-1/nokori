@@ -18,8 +18,9 @@ import java.util.Locale
  * ホーム画面ウィジェット。固定した項目（最大2件）を上に出し、その下は
  * 「近い順に並べる」か「1件ずつ一定間隔で切り替える」かを設定で選ぶ。
  * 切り替えは描き直しのアラームで行い、何件目を出すかは時刻から決める。
- * 「◯日」は文字で表示し、1日未満の部分（時:分:秒）は Android 標準の
- * Chronometer に数えさせるので、アプリが動いていなくても秒が進む。
+ * 「◯日」は文字（ドット文字では画像）で表示し、1日未満の部分（時:分:秒）は
+ * Android 標準の Chronometer に数えさせる。Chronometer は端末の経過時間から
+ * 毎回計算するので、ホーム画面が見えない間があっても、戻ったときに正しい値になる。
  * 日数が変わる瞬間にアラームで描き直す。
  */
 class CountdownWidget : AppWidgetProvider() {
@@ -39,6 +40,11 @@ class CountdownWidget : AppWidgetProvider() {
             Intent.ACTION_BOOT_COMPLETED,
             ACTION_EXACT_ALARM_PERMISSION -> refreshAll(ctx)
         }
+    }
+
+    /** ウィジェットの大きさが変わったとき（ドット文字の画像は幅に合わせて描くので描き直す） */
+    override fun onAppWidgetOptionsChanged(ctx: Context, mgr: AppWidgetManager, id: Int, options: android.os.Bundle) {
+        refreshAll(ctx)
     }
 
     override fun onDisabled(ctx: Context) {
@@ -183,24 +189,33 @@ class CountdownWidget : AppWidgetProvider() {
                     views.setImageViewBitmap(id(ctx, "titleimg$i"),
                         DotRenderer.text(ctx, item.title, 16f, DotRenderer.TITLE, maxOf(50, titleMax)))
                     val clock = parts.clockMs
-                    // 秒ありは、画像を「時:」までにして、「分:秒」は標準の時計部品に数えさせる。
-                    // 時計部品は実際の時刻から計算するので、ほかのアプリから戻ったときもずれない
-                    val num = DotRenderer.number(ctx, parts, color, hourOnly = secs)
-                    views.setImageViewBitmap(id(ctx, "numimg$i"), num.bitmap)
+                    // 秒ありは、画像を「◯日」までにして、「時:分:秒」は標準の時計部品に数えさせる。
+                    // 時計部品は端末の経過時間から計算するので、ほかのアプリから戻ったときもずれない。
+                    // 「時」まで時計部品に任せるので、描き直しが遅れても時の境目で表示が乱れない
+                    val num = DotRenderer.number(ctx, parts, color, clockByChrono = secs)
+                    val numId = id(ctx, "numimg$i")
+                    if (num.bitmap != null) {
+                        views.setImageViewBitmap(numId, num.bitmap)
+                        views.setViewVisibility(numId, View.VISIBLE)
+                    } else {
+                        views.setViewVisibility(numId, View.GONE)
+                    }
                     if (secs) {
                         val cId = id(ctx, "secc$i")
                         if (clock != null) {
                             views.setViewVisibility(cId, View.VISIBLE)
-                            views.setChronometer(cId, elapsedNow + clock % 3_600_000L, "%s", true)
+                            views.setChronometer(cId, elapsedNow + clock, "%s", true)
                             views.setChronometerCountDown(cId, true)
                             views.setTextColor(cId, color)
                             views.setTextViewTextSize(cId, TypedValue.COMPLEX_UNIT_SP, num.clockSp)
                         } else {
                             views.setViewVisibility(cId, View.GONE)
                         }
+                        // 秒ありの描き直しは、見出しの時刻（毎分）と日数の変わり目（下で設定）だけ
+                    } else {
+                        // 秒なしは画像の「時:分」を変える
+                        nextRefresh = minOf(nextRefresh, now + left % 60_000L + 200)
                     }
-                    // 残りの「分」が変わる瞬間（秒ありは「時」の画像を変える時刻もこれに含まれる）
-                    nextRefresh = minOf(nextRefresh, now + left % 60_000L + 200)
                 } else {
                     views.setTextViewText(id(ctx, "title$i"), item.title)
                     // 表示単位に合わせて数字・単位・時計を出し分け
@@ -269,8 +284,13 @@ class CountdownWidget : AppWidgetProvider() {
             // 正確なアラームが使えるなら使う（Android 12 以降、時間枠つきは最大10分ほど遅れるため）。
             // RTC（起こさない）なので、画面が消えている間は鳴らず、点いたときにまとめて更新される
             val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
-            if (exact) am.setExact(AlarmManager.RTC, at, pi)
-            else am.setWindow(AlarmManager.RTC, at, 60_000L, pi)
+            try {
+                if (exact) am.setExact(AlarmManager.RTC, at, pi)
+                else am.setWindow(AlarmManager.RTC, at, 60_000L, pi)
+            } catch (e: SecurityException) {
+                // 判定と予約の間に許可が取り消されたとき
+                am.setWindow(AlarmManager.RTC, at, 60_000L, pi)
+            }
         }
     }
 }

@@ -218,7 +218,7 @@ def layout(font, preview=False):
 
 
 def sec_chrono(cid):
-    """秒あり用の「分:秒」。Android 標準の時計部品なので、実際の時刻から数える
+    """秒あり用の「時:分:秒」。Android 標準の時計部品なので、端末の経過時間から数える
     （ホーム画面に戻ったときもずれない）。文字の大きさと色はアプリから入れる。"""
     return f'''<Chronometer
                 android:id="@+id/{cid}"
@@ -233,7 +233,7 @@ def sec_chrono(cid):
 
 def dot_layout(secs=False):
     """ドット文字用。文字は画像で描くので ImageView を置く。
-    secs=True なら「分:秒」を標準の時計部品で出す（時までは画像）。"""
+    secs=True なら「時:分:秒」を標準の時計部品で出す（「◯日」までは画像）。"""
     rows = []
     for i in range(ROWS):
         sec_parts = sec_chrono(f"secc{i}") if secs else ""

@@ -64,31 +64,32 @@ object DotRenderer {
         return bmp
     }
 
-    /** 数字画像と、後ろに並べる「分:秒」の文字の大きさ */
-    data class Number(val bitmap: Bitmap, val clockSp: Float)
+    /** 数字画像と、後ろに並べる時計の文字の大きさ。bitmap が null なら画像は出さない */
+    data class Number(val bitmap: Bitmap?, val clockSp: Float)
 
-    /** 時計の字の大きさ（時:分だけのとき＝「今日」などは大きい数字と同じ大きさに） */
+    /** 時計の字の大きさ（時計だけのとき＝「今日」などは大きい数字と同じ大きさに） */
     fun clockSp(parts: LeftParts): Float = if (parts.big == null) 26f else 18f
 
     /**
      * 残りの数字。大きい数字＋単位（小さく灰色）＋時:分 を下揃えで並べる。
-     * hourOnly のときは時計を「時:」までにする（後ろに標準の時計部品で「分:秒」が並ぶ）。
+     * clockByChrono のときは時計を画像に入れない（後ろに標準の時計部品で「時:分:秒」が並ぶ）。
      * そのときは画像の下の余白を等幅の字体にそろえ、横に並べたときに文字の下端が合うようにする
      */
-    fun number(ctx: Context, parts: LeftParts, color: Int, hourOnly: Boolean = false): Number {
+    fun number(ctx: Context, parts: LeftParts, color: Int, clockByChrono: Boolean = false): Number {
         data class Seg(val s: String, val paint: TextPaint, val gapAfter: Float)
         val segs = mutableListOf<Seg>()
         val clockSp = clockSp(parts)
+        val chrono = clockByChrono && parts.clockMs != null
         parts.big?.let { segs += Seg(it, paint(ctx, 26f, color), dp(ctx, 3f)) }
         parts.unit?.let { if (parts.big != null) segs += Seg(it, paint(ctx, 12f, MUTED), dp(ctx, 8f)) }
-        parts.clockMs?.let {
-            val s = if (hourOnly) "${it / 3_600_000}:" else hm(it)
-            segs += Seg(s, paint(ctx, clockSp, color), 0f)
+        if (!chrono) parts.clockMs?.let { segs += Seg(hm(it), paint(ctx, clockSp, color), 0f) }
+        if (segs.isEmpty()) {
+            if (chrono) return Number(null, clockSp) // 時計だけの行は画像なし
+            segs += Seg("-", paint(ctx, 18f, color), 0f)
         }
-        if (segs.isEmpty()) segs += Seg("-", paint(ctx, 18f, color), 0f)
 
         val ascent = segs.maxOf { -it.paint.fontMetricsInt.ascent }
-        val descent = if (hourOnly && parts.clockMs != null) {
+        val descent = if (chrono) {
             // 標準の等幅字体の、文字の下端から行の下までの高さ
             TextPaint().apply { typeface = Typeface.MONOSPACE; textSize = px(ctx, clockSp) }.fontMetricsInt.descent
         } else segs.maxOf { it.paint.fontMetricsInt.descent }

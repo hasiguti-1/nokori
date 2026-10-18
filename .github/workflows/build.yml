@@ -37,6 +37,9 @@ jobs:
           fi
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/nokori.jks.enc -out app/nokori.jks -pass env:NOKORI_KEY_PASSWORD
 
+      - name: 単体テスト（残り時間の計算）
+        run: gradle testReleaseUnitTest --no-daemon --stacktrace
+
       - name: ビルド
         env:
           NOKORI_KEY_PASSWORD: ${{ secrets.NOKORI_KEY_PASSWORD }}
