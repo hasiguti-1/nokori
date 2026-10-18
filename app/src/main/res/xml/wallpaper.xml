@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ライブ壁紙「残り時間ボード」の情報（壁紙を選ぶ画面に出る） -->
+<wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/wallpaper_desc"
+    android:thumbnail="@drawable/widget_preview_img" />

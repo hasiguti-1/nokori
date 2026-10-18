@@ -30,6 +30,20 @@
             android:exported="false"
             android:label="設定" />
 
+        <!-- ライブ壁紙（ボードを壁紙に描く。ロック画面にも同じ壁紙が使われる機種ならロック画面にも出る） -->
+        <service
+            android:name=".BoardWallpaper"
+            android:exported="true"
+            android:label="@string/wallpaper_name"
+            android:permission="android.permission.BIND_WALLPAPER">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/wallpaper" />
+        </service>
+
         <receiver
             android:name=".CountdownWidget"
             android:exported="true"

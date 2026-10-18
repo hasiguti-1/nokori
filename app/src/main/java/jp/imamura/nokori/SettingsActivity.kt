@@ -196,6 +196,47 @@ class SettingsActivity : Activity() {
             exactButton = btn
         }
 
+        // ── ライブ壁紙（検証用） ──
+        box.addView(heading("ライブ壁紙（試作）"))
+        box.addView(note("ウィジェットと同じボードを壁紙に描きます。ロック画面にも同じ壁紙が使われる機種なら、ロック画面にも出ます。出す項目と件数はウィジェットと同じです"))
+        box.addView(Button(this).apply {
+            text = "背景の写真を選ぶ"
+            setOnClickListener {
+                try {
+                    startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE); type = "image/*"
+                    }, REQ_BG)
+                } catch (e: Exception) {
+                    Toast.makeText(this@SettingsActivity, "写真を選ぶ画面を開けませんでした", Toast.LENGTH_LONG).show()
+                }
+            }
+        })
+        box.addView(Button(this).apply {
+            text = "背景の写真を外す（濃紺にする）"
+            setOnClickListener {
+                BoardWallpaper.bgFile(this@SettingsActivity).delete()
+                Toast.makeText(this@SettingsActivity, "背景を濃紺にしました", Toast.LENGTH_SHORT).show()
+            }
+        })
+        box.addView(Button(this).apply {
+            text = "ライブ壁紙に設定する"
+            setOnClickListener {
+                val cn = android.content.ComponentName(this@SettingsActivity, BoardWallpaper::class.java)
+                try {
+                    startActivity(Intent(android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                        .putExtra(android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, cn))
+                } catch (e: Exception) {
+                    try {
+                        startActivity(Intent(android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))
+                    } catch (e2: Exception) {
+                        Toast.makeText(this@SettingsActivity,
+                            "壁紙の画面を開けませんでした。設定 → 壁紙 →「その他のライブ壁紙」から選んでください",
+                            Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        })
+
         // ── ロック画面 ──
         box.addView(heading("ロック画面"))
         box.addView(note("固定した項目のいちばん上（固定がなければ期日がいちばん近い項目）を、通知として出し続けます。ロック画面の通知欄にも出ます。字体は端末の標準です。通知を消したときは、ここで入れ直してください"))
@@ -232,6 +273,22 @@ class SettingsActivity : Activity() {
     private var exactStatus: TextView? = null
     private var exactButton: Button? = null
     private var lockCheck: CheckBox? = null
+
+    @Deprecated("Activity の結果の受け取り（このアプリは androidx を使わないため）")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_BG || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        try {
+            // 選んだ写真をアプリの中に写す（元の写真の場所が変わっても壁紙が消えないように）
+            contentResolver.openInputStream(uri)?.use { input ->
+                BoardWallpaper.bgFile(this).outputStream().use { input.copyTo(it) }
+            }
+            Toast.makeText(this, "背景の写真を設定しました", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "写真を読み込めませんでした", Toast.LENGTH_LONG).show()
+        }
+    }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -293,6 +350,7 @@ class SettingsActivity : Activity() {
 
     companion object {
         private const val REQ_NOTICE = 1
+        private const val REQ_BG = 2
         const val PRIVACY_URL = "https://github.com/hasiguti-1/nokori/blob/main/docs/privacy.md"
     }
 
